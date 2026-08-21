@@ -93,7 +93,7 @@ export default function Contact() {
               <span className="ic"><WhatsAppIcon size={18} /></span>
               <div>
                 <h4>{t('contactWhatsappTitle')}</h4>
-                <p><a href={buildWhatsAppLink('Hi Kathmandu Chilling, I have a question.')} target="_blank" rel="noopener noreferrer">+{WHATSAPP_LOCAL_NUMBER}</a></p>
+                <p><a href={buildWhatsAppLink('Hi Kathmandu Chilling, I have a question.')} target="_blank" rel="noopener noreferrer">+977 {WHATSAPP_LOCAL_NUMBER}</a></p>
               </div>
             </div>
             <div className="item">

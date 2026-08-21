@@ -9,7 +9,7 @@ export default function ContactPage() {
   useSeo({
     title: 'Contact Kathmandu Chilling | Get Cold Room & Dairy Plant Quotations',
     description:
-      'Contact Kathmandu Chilling factory office in Naya Naikap, Kathmandu. Call 9844366008 or WhatsApp 9716123132 for turnkey project quotes and 24/7 technical service.',
+      'Contact Kathmandu Chilling factory office in Naya Naikap, Kathmandu. Call or WhatsApp +977 9844366008 for turnkey project quotes and 24/7 technical service.',
     canonical: 'https://kathmanduchilling.com.np/contact',
   });
 
@@ -47,7 +47,7 @@ export default function ContactPage() {
             <div className="hub-card-icon"><WhatsAppIcon size={24} /></div>
             <div className="hub-card-info">
               <span className="mono hub-lbl">WHATSAPP DESK</span>
-              <strong>+977 9716123132</strong>
+              <strong>+977 9844366008</strong>
               <p>Instant spec sharing, PDF brochures, and layout drawings.</p>
               <a href={waLink} target="_blank" rel="noopener noreferrer" className="hub-link mono">Chat on WhatsApp →</a>
             </div>

@@ -15,7 +15,7 @@ export const CONTACT = {
 
 // WhatsApp number, digits only, WITH country code (no + , no spaces).
 export const WHATSAPP_COUNTRY_CODE = '977';
-export const WHATSAPP_LOCAL_NUMBER = '9716123132';
+export const WHATSAPP_LOCAL_NUMBER = '9844366008';
 export const WHATSAPP_NUMBER = `${WHATSAPP_COUNTRY_CODE}${WHATSAPP_LOCAL_NUMBER}`;
 
 export function buildWhatsAppLink(message) {

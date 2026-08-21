@@ -33,13 +33,9 @@ No other setup needed — there's no backend.
 Set once in `src/data/content.js`:
 
 ```js
-export const WHATSAPP_COUNTRY_CODE = '977';       // Nepal. Change if wrong.
-export const WHATSAPP_LOCAL_NUMBER = '9716123132';
+export const WHATSAPP_COUNTRY_CODE = '977';       // Nepal (+977)
+export const WHATSAPP_LOCAL_NUMBER = '9844366008';
 ```
-
-⚠️ I assumed `9716123132` is a Nepali number and prefixed it with `+977`.
-If it's actually an Indian number, change `WHATSAPP_COUNTRY_CODE` to `'91'`
-(or whatever the correct code is) — every button below updates automatically.
 
 Everywhere someone can reach out, there's now a working WhatsApp path:
 
