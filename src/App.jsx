@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import FrostCanvas from './components/FrostCanvas.jsx';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
@@ -154,6 +155,7 @@ export default function App() {
             </Route>
           </Routes>
         </Suspense>
+        <SpeedInsights />
       </BrowserRouter>
     </AdminDataProvider>
   );
