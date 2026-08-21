@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1736" />
+      <stop offset="50%" stop-color="#0f2252" />
+      <stop offset="100%" stop-color="#081026" />
+    </linearGradient>
+
+    <linearGradient id="orbitRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff3b30" />
+      <stop offset="100%" stop-color="#c41818" />
+    </linearGradient>
+
+    <linearGradient id="orbitBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0066cc" />
+      <stop offset="50%" stop-color="#0088ff" />
+      <stop offset="100%" stop-color="#00c8ff" />
+    </linearGradient>
+
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.25" />
+    </filter>
+
+    <!-- Curved Text Paths -->
+    <!-- Outer upper arc for main title -->
+    <path id="topTextArc" d="M 68 250 A 182 182 0 1 1 432 250" fill="none" />
+    <!-- Outer lower arc for Pvt. Ltd. and Star -->
+    <path id="bottomTextArc" d="M 432 250 A 182 182 0 0 1 68 250" fill="none" />
+  </defs>
+
+  <!-- Outer Ring Shadow & Base -->
+  <circle cx="250" cy="250" r="240" fill="url(#ringGrad)" stroke="#1e3a78" stroke-width="4" filter="url(#subtleGlow)" />
+  
+  <!-- Outer Gold/Silver Accent Rings -->
+  <circle cx="250" cy="250" r="236" fill="none" stroke="#35d6ff" stroke-width="1.5" stroke-opacity="0.6" />
+  <circle cx="250" cy="250" r="148" fill="none" stroke="#35d6ff" stroke-width="2" stroke-opacity="0.8" />
+
+  <!-- Circular Arched Text: KATHMANDU CHILLING & REFRIGERATOR UDHYOG -->
+  <text fill="#ffffff" font-family="'Inter', 'Montserrat', 'Arial', sans-serif" font-size="20.5" font-weight="800" letter-spacing="3.2">
+    <textPath href="#topTextArc" startOffset="50%" text-anchor="middle">
+      KATHMANDU CHILLING &amp; REFRIGERATOR
+    </textPath>
+  </text>
+
+  <!-- Circular Arched Text: UDHYOG PVT. LTD. ★ -->
+  <text fill="#ffffff" font-family="'Inter', 'Montserrat', 'Arial', sans-serif" font-size="21" font-weight="800" letter-spacing="4">
+    <textPath href="#bottomTextArc" startOffset="50%" text-anchor="middle">
+      UDHYOG PVT. LTD. ★
+    </textPath>
+  </text>
+
+  <!-- Inner Center Circle (White / Frost) -->
+  <circle cx="250" cy="250" r="142" fill="#ffffff" stroke="#0f2252" stroke-width="3" />
+  
+  <!-- Center Glow Gradient on White Disk -->
+  <radialGradient id="innerGlow" cx="50%" cy="40%" r="60%">
+    <stop offset="0%" stop-color="#ffffff" />
+    <stop offset="85%" stop-color="#f0f5fa" />
+    <stop offset="100%" stop-color="#d8e6f5" />
+  </radialGradient>
+  <circle cx="250" cy="250" r="139" fill="url(#innerGlow)" />
+
+  <!-- Dynamic Cooling Orbital Swooshes around KCR -->
+  <!-- Top Blue Orbit Swoosh -->
+  <path d="M 152 232 C 140 180, 205 160, 275 168 C 345 176, 375 208, 360 236 C 352 250, 335 258, 310 258 C 330 250, 342 238, 345 228 C 350 210, 320 188, 260 184 C 200 180, 158 198, 162 226 C 164 235, 172 244, 185 250 C 168 248, 156 242, 152 232 Z" 
+        fill="url(#orbitBlue)" />
+
+  <!-- Bottom Red Orbit Swoosh -->
+  <path d="M 348 268 C 360 320, 295 340, 225 332 C 155 324, 125 292, 140 264 C 148 250, 165 242, 190 242 C 170 250, 158 262, 155 272 C 150 290, 180 312, 240 316 C 300 320, 342 302, 338 274 C 336 265, 328 256, 315 250 C 332 252, 344 258, 348 268 Z" 
+        fill="url(#orbitRed)" />
+
+  <!-- Red Accent Flame Swirl -->
+  <path d="M 148 215 C 135 245, 160 285, 220 308 C 265 325, 310 320, 340 298 C 305 312, 255 310, 215 295 C 170 278, 150 245, 160 220 C 165 208, 175 198, 190 190 C 170 195, 155 203, 148 215 Z" 
+        fill="url(#orbitRed)" />
+
+  <!-- Bold Central "KCR" Typography -->
+  <g id="kcrText" transform="translate(250, 264)" text-anchor="middle">
+    <!-- Drop shadow for KCR -->
+    <text x="2" y="2" font-family="'Impact', 'Arial Black', sans-serif" font-size="78" font-weight="900" fill="#081026" letter-spacing="-1">
+      KCR
+    </text>
+    <!-- Main KCR letters -->
+    <text x="0" y="0" font-family="'Impact', 'Arial Black', sans-serif" font-size="78" font-weight="900" fill="#0c1733" letter-spacing="-1">
+      KCR
+    </text>
+  </g>
+</svg>
