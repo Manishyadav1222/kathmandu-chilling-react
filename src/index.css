@@ -528,10 +528,10 @@
   /* ===== Hero (70% Background Visibility & 3S Auto-Scroll Showcase) ===== */
   .hero-section {
     position: relative;
-    min-height: 100vh;
+    min-height: 90vh;
     display: flex;
     align-items: center;
-    padding: 140px 0 80px;
+    padding: 105px 0 50px;
     overflow: hidden;
     background: #060b14;
   }
@@ -581,6 +581,9 @@
     gap: 48px;
     align-items: center;
   }
+  .hero-content-col {
+    transform: translateY(-24px);
+  }
   .hero-eyebrow-badge {
     display: inline-flex;
     align-items: center;
@@ -592,7 +595,7 @@
     font-size: 11px;
     letter-spacing: 0.08em;
     color: var(--ice);
-    margin-bottom: 22px;
+    margin-bottom: 14px;
     backdrop-filter: blur(8px);
   }
   .live-pulse-dot {
@@ -607,7 +610,7 @@
     font-size: clamp(38px, 4.8vw, 64px);
     line-height: 1.05;
     letter-spacing: -0.02em;
-    margin-bottom: 22px;
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
   }
@@ -623,13 +626,13 @@
     color: var(--steel);
     line-height: 1.65;
     max-width: 520px;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
   .hero-btn-group {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
   }
   .btn-hero-solid {
     background: var(--ice);
