@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAdminData } from '../context/AdminDataContext.jsx';
+
+// Preset Avatars for Quick Setup
+const PRESET_AVATARS = [
+  { label: 'Executive Male', url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Female Engineer', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Lead Specialist', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Fabrication Master', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Field Engineer', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80' },
+];
+
+const EMOJI_PALETTE = ['☀️', '📡', '🤝', '🚀', '❄️', '🏭', '⚡', '🏔️', '🥛', '🏆', '🛠️', '🌱'];
 
 export default function AdminStory() {
   const {
@@ -13,8 +24,12 @@ export default function AdminStory() {
   const story = data?.story || {};
   const team = data?.team || [];
 
-  const [activeTab, setActiveTab] = useState('mission'); // 'mission' | 'milestones' | 'team' | 'future'
+  const [activeTab, setActiveTab] = useState('team'); // Default to 'team' for fast photo management
   const [saveAlert, setSaveAlert] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
+
+  const fileInputRef = useRef(null);
 
   // Story Form State
   const [storyForm, setStoryForm] = useState({
@@ -33,6 +48,7 @@ export default function AdminStory() {
   // Team Modal State
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState(null);
+  const [imageUploadMode, setImageUploadMode] = useState('file'); // 'file' | 'url' | 'preset'
   const [memberForm, setMemberForm] = useState({
     name: '',
     role: '',
@@ -61,6 +77,44 @@ export default function AdminStory() {
     desc: '',
   });
 
+  // File Upload to Base64 Handler
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (recommend < 4MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo is larger than 5MB. Please choose a smaller photo for optimal performance.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      setMemberForm((prev) => ({
+        ...prev,
+        image: uploadEvent.target.result,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Drag and drop photo upload
+  const handleDropPhoto = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setMemberForm((prev) => ({
+          ...prev,
+          image: uploadEvent.target.result,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Save Main Story Changes
   const handleSaveStory = (e) => {
     e.preventDefault();
@@ -72,13 +126,14 @@ export default function AdminStory() {
   // Team CRUD
   const openAddMember = () => {
     setEditingMemberId(null);
+    setImageUploadMode('file');
     setMemberForm({
       name: '',
       role: '',
       department: 'Engineering & R&D',
       experience: '8+ Years Experience',
       bio: 'Thermal engineering and project fabrication specialist at Kathmandu Chilling.',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80',
+      image: PRESET_AVATARS[0].url,
       specialization: 'Modular Cold Storage & Inverter Systems',
     });
     setTeamModalOpen(true);
@@ -86,6 +141,7 @@ export default function AdminStory() {
 
   const openEditMember = (m) => {
     setEditingMemberId(m.id);
+    setImageUploadMode('file');
     setMemberForm({
       name: m.name || '',
       role: m.role || '',
@@ -100,6 +156,10 @@ export default function AdminStory() {
 
   const handleSaveMember = (e) => {
     e.preventDefault();
+    if (!memberForm.image) {
+      alert('Please upload a profile photo or select a preset avatar.');
+      return;
+    }
     if (editingMemberId) {
       updateTeamMember(editingMemberId, memberForm);
     } else {
@@ -194,14 +254,30 @@ export default function AdminStory() {
     }
   };
 
+  // Filtered team list
+  const filteredTeam = team.filter((m) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = selectedDeptFilter === 'ALL' || m.department === selectedDeptFilter;
+    return matchesSearch && matchesDept;
+  });
+
   return (
     <div className="admin-page">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="admin-page-header">
         <div>
-          <h2>Our Story, Mission &amp; Team Management</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span className="live-pulse"></span>
+            <span className="mono" style={{ color: 'var(--admin-cyan)', fontSize: '11px', letterSpacing: '0.1em' }}>
+              STORY, MISSION &amp; TEAM STUDIO
+            </span>
+          </div>
+          <h2>Our Team, Mission &amp; Company Evolution</h2>
           <p className="admin-subtext">
-            Customize company evolution chronology, national mission, small business impact, and engineering team profiles in real time.
+            Upload team photos, customize company evolution chronology, national mission, and small business support programs.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -212,7 +288,7 @@ export default function AdminStory() {
             className="btn-admin-secondary mono"
             style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            ↗ View Public Page
+            ↗ View Public /about Page
           </a>
         </div>
       </div>
@@ -223,8 +299,14 @@ export default function AdminStory() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Navigation Tabs */}
       <div className="admin-tab-bar">
+        <button
+          className={`tab-item mono ${activeTab === 'team' ? 'active' : ''}`}
+          onClick={() => setActiveTab('team')}
+        >
+          👥 Engineering Team Profiles ({team.length})
+        </button>
         <button
           className={`tab-item mono ${activeTab === 'mission' ? 'active' : ''}`}
           onClick={() => setActiveTab('mission')}
@@ -238,12 +320,6 @@ export default function AdminStory() {
           ⏳ Evolution Timeline ({story.milestones?.length || 0})
         </button>
         <button
-          className={`tab-item mono ${activeTab === 'team' ? 'active' : ''}`}
-          onClick={() => setActiveTab('team')}
-        >
-          👥 Engineering Team ({team.length})
-        </button>
-        <button
           className={`tab-item mono ${activeTab === 'future' ? 'active' : ''}`}
           onClick={() => setActiveTab('future')}
         >
@@ -251,11 +327,172 @@ export default function AdminStory() {
         </button>
       </div>
 
-      {/* TAB 1: Mission, Vision & Impact */}
+      {/* TAB 1: TEAM MEMBERS (PHOTO UPLOADER & PROFILE MANAGER) */}
+      {activeTab === 'team' && (
+        <div>
+          {/* Controls bar */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              marginBottom: '24px',
+              background: 'rgba(8, 18, 34, 0.6)',
+              padding: '16px 20px',
+              borderRadius: '14px',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '280px' }}>
+              <input
+                type="text"
+                placeholder="🔍 Search specialist by name, role, specialization..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  background: 'rgba(4, 10, 20, 0.8)',
+                  border: '1px solid var(--admin-border)',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  width: '100%',
+                  fontSize: '13px',
+                }}
+              />
+              <select
+                value={selectedDeptFilter}
+                onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                style={{
+                  background: 'rgba(4, 10, 20, 0.8)',
+                  border: '1px solid var(--admin-border)',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '13px',
+                }}
+              >
+                <option value="ALL">All Departments</option>
+                <option value="Executive Leadership">Executive Leadership</option>
+                <option value="Engineering & R&D">Engineering &amp; R&amp;D</option>
+                <option value="Sanitary Manufacturing">Sanitary Manufacturing</option>
+                <option value="Client Advisory & Projects">Client Advisory &amp; Projects</option>
+                <option value="24/7 Operations">24/7 Operations</option>
+              </select>
+            </div>
+
+            <button onClick={openAddMember} className="btn-admin-primary" style={{ padding: '12px 20px' }}>
+              + Add New Team Specialist
+            </button>
+          </div>
+
+          {/* Team Cards Grid */}
+          <div className="admin-grid-cards">
+            {filteredTeam.map((m) => (
+              <div key={m.id} className="admin-card-item" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '14px' }}>
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '74px',
+                      height: '74px',
+                      borderRadius: '50%',
+                      padding: '2px',
+                      background: 'linear-gradient(135deg, var(--admin-cyan), #3b82f6)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={m.image}
+                      alt={m.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '17px', fontWeight: '700' }}>
+                      {m.name}
+                    </h4>
+                    <span className="mono" style={{ color: 'var(--admin-cyan)', fontSize: '12.5px', fontWeight: '600' }}>
+                      {m.role}
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{m.department}</div>
+                  </div>
+                </div>
+
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: '11px',
+                    color: '#ff7a45',
+                    background: 'rgba(255, 122, 69, 0.1)',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    marginBottom: '10px',
+                    display: 'inline-block',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  ★ {m.experience}
+                </div>
+
+                <p
+                  style={{
+                    fontSize: '13px',
+                    color: '#cbd5e1',
+                    lineHeight: '1.5',
+                    marginBottom: '12px',
+                    flex: 1,
+                  }}
+                >
+                  {m.bio}
+                </p>
+
+                <div
+                  style={{
+                    borderTop: '1px solid var(--admin-border)',
+                    paddingTop: '10px',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <span className="mono" style={{ fontSize: '11px', color: '#38bdf8' }}>
+                    🔧 {m.specialization}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '8px',
+                    borderTop: '1px solid var(--admin-border)',
+                    paddingTop: '12px',
+                  }}
+                >
+                  <button onClick={() => openEditMember(m)} className="btn-table-edit">
+                    ✏️ Edit Profile &amp; Photo
+                  </button>
+                  <button onClick={() => deleteTeamMember(m.id)} className="btn-table-delete">
+                    🗑️ Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: MISSION, VISION & NATION BUILDING */}
       {activeTab === 'mission' && (
         <form onSubmit={handleSaveStory} className="admin-form-panel">
           <div className="form-section-title">
-            <h3>Hero Headlines &amp; Impact Stats</h3>
+            <h3>Hero Headlines &amp; Live Impact Statistics</h3>
           </div>
 
           <div className="admin-form-grid-2">
@@ -315,7 +552,7 @@ export default function AdminStory() {
           </div>
 
           <div className="form-section-title" style={{ marginTop: '28px' }}>
-            <h3>Core Mission &amp; Vision</h3>
+            <h3>Core Mission &amp; National Vision</h3>
           </div>
 
           <div className="admin-form-grid-2">
@@ -345,7 +582,7 @@ export default function AdminStory() {
 
           <div className="admin-form-grid-2">
             <div className="form-group">
-              <label>🇳🇵 Nation Building &amp; Import Substitution Message</label>
+              <label>🇳🇵 Nation Building &amp; Import Substitution</label>
               <textarea
                 rows="4"
                 value={storyForm.nationBuilding}
@@ -354,7 +591,7 @@ export default function AdminStory() {
               />
             </div>
             <div className="form-group">
-              <label>🌱 Small Business &amp; Cooperative Assistance</label>
+              <label>🌱 Small Business &amp; Cooperative Assistance Program</label>
               <textarea
                 rows="4"
                 value={storyForm.smallBusinessImpact}
@@ -365,14 +602,14 @@ export default function AdminStory() {
           </div>
 
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn-admin-primary">
+            <button type="submit" className="btn-admin-primary" style={{ padding: '14px 28px' }}>
               💾 Save Story &amp; Mission Settings
             </button>
           </div>
         </form>
       )}
 
-      {/* TAB 2: Milestones Chronology */}
+      {/* TAB 3: EVOLUTION TIMELINE MILESTONES */}
       {activeTab === 'milestones' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -386,8 +623,8 @@ export default function AdminStory() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: '100px' }}>Year</th>
-                  <th style={{ width: '220px' }}>Milestone Title</th>
+                  <th style={{ width: '110px' }}>Year / Period</th>
+                  <th style={{ width: '240px' }}>Milestone Title</th>
                   <th>Description</th>
                   <th style={{ width: '130px', textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -395,12 +632,18 @@ export default function AdminStory() {
               <tbody>
                 {(story.milestones || []).map((m, idx) => (
                   <tr key={idx}>
-                    <td className="mono" style={{ color: 'var(--admin-cyan)', fontWeight: 'bold' }}>{m.year}</td>
+                    <td className="mono" style={{ color: 'var(--admin-cyan)', fontWeight: 'bold', fontSize: '13px' }}>
+                      {m.year}
+                    </td>
                     <td><strong>{m.title}</strong></td>
                     <td style={{ color: 'var(--admin-text-muted)', fontSize: '13px' }}>{m.desc}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button onClick={() => openEditMilestone(m, idx)} className="btn-table-edit" style={{ marginRight: '6px' }}>Edit</button>
-                      <button onClick={() => handleDeleteMilestone(idx)} className="btn-table-delete">Delete</button>
+                      <button onClick={() => openEditMilestone(m, idx)} className="btn-table-edit" style={{ marginRight: '6px' }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteMilestone(idx)} className="btn-table-delete">
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -410,54 +653,13 @@ export default function AdminStory() {
         </div>
       )}
 
-      {/* TAB 3: Team Members */}
-      {activeTab === 'team' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <p className="admin-subtext">Manage team members, department designations, credentials, and bios.</p>
-            <button onClick={openAddMember} className="btn-admin-primary">
-              + Add Team Member
-            </button>
-          </div>
-
-          <div className="admin-grid-cards">
-            {team.map((m) => (
-              <div key={m.id} className="admin-card-item">
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '14px' }}>
-                  <img
-                    src={m.image}
-                    alt={m.name}
-                    style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--admin-cyan)' }}
-                  />
-                  <div>
-                    <h4 style={{ margin: '0 0 2px 0', color: '#fff', fontSize: '16px' }}>{m.name}</h4>
-                    <span className="mono" style={{ color: 'var(--admin-cyan)', fontSize: '12px' }}>{m.role}</span>
-                    <div style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>{m.department}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '10px', lineHeight: '1.4' }}>
-                  {m.bio}
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--admin-orange)', marginBottom: '14px' }} className="mono">
-                  🔧 {m.specialization}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--admin-border)', paddingTop: '10px' }}>
-                  <button onClick={() => openEditMember(m)} className="btn-table-edit">Edit Profile</button>
-                  <button onClick={() => deleteTeamMember(m.id)} className="btn-table-delete">Remove</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: Future Roadmap */}
+      {/* TAB 4: VISION 2030 ROADMAP */}
       {activeTab === 'future' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <p className="admin-subtext">Strategic Vision 2030 initiatives displayed on `/about`.</p>
             <button onClick={openAddFuture} className="btn-admin-primary">
-              + Add Roadmap Item
+              + Add Roadmap Initiative
             </button>
           </div>
 
@@ -465,21 +667,25 @@ export default function AdminStory() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: '60px' }}>Icon</th>
+                  <th style={{ width: '70px' }}>Icon</th>
                   <th style={{ width: '240px' }}>Initiative Title</th>
-                  <th>Description</th>
+                  <th>Strategic Description</th>
                   <th style={{ width: '130px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(story.futurePlans || []).map((p, idx) => (
                   <tr key={idx}>
-                    <td style={{ fontSize: '20px' }}>{p.icon}</td>
+                    <td style={{ fontSize: '24px' }}>{p.icon}</td>
                     <td><strong>{p.title}</strong></td>
                     <td style={{ color: 'var(--admin-text-muted)', fontSize: '13px' }}>{p.desc}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button onClick={() => openEditFuture(p, idx)} className="btn-table-edit" style={{ marginRight: '6px' }}>Edit</button>
-                      <button onClick={() => handleDeleteFuture(idx)} className="btn-table-delete">Delete</button>
+                      <button onClick={() => openEditFuture(p, idx)} className="btn-table-edit" style={{ marginRight: '6px' }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteFuture(idx)} className="btn-table-delete">
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -489,98 +695,276 @@ export default function AdminStory() {
         </div>
       )}
 
-      {/* TEAM MEMBER MODAL */}
+      {/* ============================================================ */}
+      {/* MODERN TEAM MEMBER MODAL (WITH LIVE PREVIEW & FILE UPLOADER) */}
+      {/* ============================================================ */}
       {teamModalOpen && (
         <div className="admin-modal-backdrop">
-          <div className="admin-modal" style={{ maxWidth: '580px' }}>
+          <div className="admin-modal" style={{ maxWidth: '820px', width: '95%' }}>
             <div className="admin-modal-head">
-              <h3>{editingMemberId ? 'Edit Team Member' : 'Add New Team Member'}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>👤</span>
+                <h3>{editingMemberId ? 'Edit Team Specialist' : 'Add New Team Specialist'}</h3>
+              </div>
               <button onClick={() => setTeamModalOpen(false)}>✕</button>
             </div>
-            <form onSubmit={handleSaveMember} className="admin-modal-body">
-              <div className="admin-form-grid-2">
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input
-                    type="text"
-                    value={memberForm.name}
-                    onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Job Title / Role</label>
-                  <input
-                    type="text"
-                    value={memberForm.role}
-                    onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="admin-form-grid-2">
-                <div className="form-group">
-                  <label>Department</label>
-                  <select
-                    value={memberForm.department}
-                    onChange={(e) => setMemberForm({ ...memberForm, department: e.target.value })}
+            <form onSubmit={handleSaveMember} className="admin-modal-body" style={{ padding: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '28px' }}>
+                {/* LEFT COLUMN: FORM INPUTS & PHOTO UPLOADER */}
+                <div>
+                  <div className="form-group">
+                    <label>Photo Source Mode</label>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <button
+                        type="button"
+                        className={`tab-item mono ${imageUploadMode === 'file' ? 'active' : ''}`}
+                        onClick={() => setImageUploadMode('file')}
+                        style={{ padding: '6px 14px', fontSize: '11.5px' }}
+                      >
+                        📁 Upload from Device
+                      </button>
+                      <button
+                        type="button"
+                        className={`tab-item mono ${imageUploadMode === 'url' ? 'active' : ''}`}
+                        onClick={() => setImageUploadMode('url')}
+                        style={{ padding: '6px 14px', fontSize: '11.5px' }}
+                      >
+                        🔗 Web Image URL
+                      </button>
+                      <button
+                        type="button"
+                        className={`tab-item mono ${imageUploadMode === 'preset' ? 'active' : ''}`}
+                        onClick={() => setImageUploadMode('preset')}
+                        style={{ padding: '6px 14px', fontSize: '11.5px' }}
+                      >
+                        ✨ Preset Avatars
+                      </button>
+                    </div>
+
+                    {/* Mode 1: File Upload */}
+                    {imageUploadMode === 'file' && (
+                      <div
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDropPhoto}
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          border: '2px dashed var(--admin-cyan)',
+                          borderRadius: '12px',
+                          padding: '24px 16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          background: 'rgba(53, 214, 255, 0.05)',
+                          marginBottom: '16px',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                        />
+                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>📸</div>
+                        <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>
+                          Click to Browse or Drag &amp; Drop Photo
+                        </strong>
+                        <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                          Supports JPG, PNG, WEBP (Max 5MB)
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Mode 2: Direct URL */}
+                    {imageUploadMode === 'url' && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <input
+                          type="text"
+                          placeholder="https://images.unsplash.com/... or /images/team/..."
+                          value={memberForm.image}
+                          onChange={(e) => setMemberForm({ ...memberForm, image: e.target.value })}
+                          style={{ width: '100%', padding: '10px 12px', background: 'rgba(4, 10, 20, 0.8)', border: '1px solid var(--admin-border)', color: '#fff', borderRadius: '8px' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Mode 3: Presets */}
+                    {imageUploadMode === 'preset' && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        {PRESET_AVATARS.map((p, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setMemberForm({ ...memberForm, image: p.url })}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 10px',
+                              background: memberForm.image === p.url ? 'var(--admin-cyan)' : 'rgba(10, 20, 36, 0.8)',
+                              color: memberForm.image === p.url ? '#050b14' : '#fff',
+                              border: '1px solid var(--admin-border)',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <img src={p.url} alt={p.label} style={{ width: '22px', height: '22px', borderRadius: '50%' }} />
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="admin-form-grid-2">
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Er. Ramesh Yadav"
+                        value={memberForm.name}
+                        onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Job Title / Role</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Managing Director & Founder"
+                        value={memberForm.role}
+                        onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-form-grid-2">
+                    <div className="form-group">
+                      <label>Department</label>
+                      <select
+                        value={memberForm.department}
+                        onChange={(e) => setMemberForm({ ...memberForm, department: e.target.value })}
+                      >
+                        <option value="Executive Leadership">Executive Leadership</option>
+                        <option value="Engineering & R&D">Engineering &amp; R&amp;D</option>
+                        <option value="Sanitary Manufacturing">Sanitary Manufacturing</option>
+                        <option value="Client Advisory & Projects">Client Advisory &amp; Projects</option>
+                        <option value="24/7 Operations">24/7 Operations</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Experience Badge</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 18+ Years in Thermal Engineering"
+                        value={memberForm.experience}
+                        onChange={(e) => setMemberForm({ ...memberForm, experience: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Technical Specialization</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Industrial Refrigeration & Turnkey EPC"
+                      value={memberForm.specialization}
+                      onChange={(e) => setMemberForm({ ...memberForm, specialization: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Bio / Background</label>
+                    <textarea
+                      rows="3"
+                      placeholder="Summary of engineering expertise and track record..."
+                      value={memberForm.bio}
+                      onChange={(e) => setMemberForm({ ...memberForm, bio: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: LIVE WEBSITE CARD PREVIEW */}
+                <div>
+                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="mono" style={{ color: 'var(--admin-cyan)', fontSize: '11px', letterSpacing: '0.08em' }}>
+                      ⚡ LIVE PUBLIC CARD PREVIEW
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'rgba(8, 16, 28, 0.95)',
+                      border: '1px solid rgba(53, 214, 255, 0.4)',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+                    }}
                   >
-                    <option value="Executive Leadership">Executive Leadership</option>
-                    <option value="Engineering & R&D">Engineering &amp; R&amp;D</option>
-                    <option value="Sanitary Manufacturing">Sanitary Manufacturing</option>
-                    <option value="Client Advisory & Projects">Client Advisory &amp; Projects</option>
-                    <option value="24/7 Operations">24/7 Operations</option>
-                  </select>
+                    <div style={{ position: 'relative', width: '100%', height: '200px', background: '#060c16' }}>
+                      {memberForm.image ? (
+                        <img
+                          src={memberForm.image}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                          No Photo Uploaded
+                        </div>
+                      )}
+                      <div
+                        className="mono"
+                        style={{
+                          position: 'absolute',
+                          bottom: '10px',
+                          left: '10px',
+                          background: 'rgba(6, 12, 22, 0.85)',
+                          border: '1px solid rgba(53, 214, 255, 0.35)',
+                          color: 'var(--admin-cyan)',
+                          fontSize: '10px',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {memberForm.department}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '16px' }}>
+                      <h4 style={{ margin: '0 0 2px 0', color: '#fff', fontSize: '18px', fontWeight: '700' }}>
+                        {memberForm.name || 'Specialist Name'}
+                      </h4>
+                      <div className="mono" style={{ color: 'var(--admin-cyan)', fontSize: '11.5px', marginBottom: '4px' }}>
+                        {memberForm.role || 'Job Role'}
+                      </div>
+                      <div className="mono" style={{ color: '#ff7a45', fontSize: '10.5px', marginBottom: '8px' }}>
+                        ★ {memberForm.experience || 'Experience Badge'}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.4', margin: '0 0 10px 0' }}>
+                        {memberForm.bio || 'Bio summary will appear here as you type...'}
+                      </p>
+                      <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '8px' }}>
+                        <span className="mono" style={{ fontSize: '10.5px', color: '#38bdf8' }}>
+                          🔧 {memberForm.specialization || 'Technical Specialization'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Experience Badge</label>
-                  <input
-                    type="text"
-                    value={memberForm.experience}
-                    onChange={(e) => setMemberForm({ ...memberForm, experience: e.target.value })}
-                  />
-                </div>
               </div>
 
-              <div className="form-group">
-                <label>Photo URL</label>
-                <input
-                  type="text"
-                  value={memberForm.image}
-                  onChange={(e) => setMemberForm({ ...memberForm, image: e.target.value })}
-                  placeholder="https://... or /images/team/..."
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Technical Specialization</label>
-                <input
-                  type="text"
-                  value={memberForm.specialization}
-                  onChange={(e) => setMemberForm({ ...memberForm, specialization: e.target.value })}
-                  placeholder="e.g. Inverter Units & Thermodynamic Heat-Load"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Bio / Background</label>
-                <textarea
-                  rows="3"
-                  value={memberForm.bio}
-                  onChange={(e) => setMemberForm({ ...memberForm, bio: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="admin-modal-foot">
+              <div className="admin-modal-foot" style={{ marginTop: '24px', borderTop: '1px solid var(--admin-border)', paddingTop: '16px' }}>
                 <button type="button" onClick={() => setTeamModalOpen(false)} className="btn-admin-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn-admin-primary">
-                  {editingMemberId ? 'Update Member' : 'Add Member'}
+                <button type="submit" className="btn-admin-primary" style={{ padding: '12px 24px' }}>
+                  {editingMemberId ? '✓ Update Specialist Profile' : '+ Save & Add Specialist'}
                 </button>
               </div>
             </form>
@@ -643,20 +1027,33 @@ export default function AdminStory() {
       {/* FUTURE PLAN MODAL */}
       {futureModalOpen && (
         <div className="admin-modal-backdrop">
-          <div className="admin-modal" style={{ maxWidth: '500px' }}>
+          <div className="admin-modal" style={{ maxWidth: '520px' }}>
             <div className="admin-modal-head">
               <h3>{editingFutureIdx !== null ? 'Edit Roadmap Initiative' : 'Add Vision 2030 Initiative'}</h3>
               <button onClick={() => setFutureModalOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleSaveFuture} className="admin-modal-body">
               <div className="form-group">
-                <label>Icon Emoji (e.g. ☀️, 📡, 🤝, 🚀)</label>
-                <input
-                  type="text"
-                  value={futureForm.icon}
-                  onChange={(e) => setFutureForm({ ...futureForm, icon: e.target.value })}
-                  required
-                />
+                <label>Select Icon Emoji</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {EMOJI_PALETTE.map((em, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setFutureForm({ ...futureForm, icon: em })}
+                      style={{
+                        fontSize: '20px',
+                        padding: '6px 10px',
+                        background: futureForm.icon === em ? 'var(--admin-cyan)' : 'rgba(10, 20, 36, 0.8)',
+                        border: '1px solid var(--admin-border)',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="form-group">
