@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { buildWhatsAppLink } from '../data/content';
 import { useLang } from '../hooks/useLang.jsx';
+import { useAdminData } from '../context/AdminDataContext.jsx';
+import SmartImage from './SmartImage.jsx';
 
-const AUTO_PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   {
     id: 'cold-room',
     title: 'Cold Storage Room',
@@ -80,12 +82,55 @@ const AUTO_PRODUCTS = [
 
 const CYCLE_TIME_MS = 3000; // 3 seconds per product
 
+const ACCENTS = ['#35d6ff', '#00b4d8', '#3cd070', '#ff7a45', '#a855f7', '#10b981', '#f59e0b'];
+
+const MARKETING_BADGES = [
+  '🔥 TOP SELLING · FACTORY DIRECT DEALS',
+  '🏆 450+ PROVEN INSTALLATIONS ACROSS NEPAL',
+  '⚡ UP TO 40% LOWER POWER CONSUMPTION',
+  '🛡️ 2-YEAR FULL ON-SITE WARRANTY',
+  '📋 FREE DPR & AGRO SUBSIDY PAPERWORK',
+  '🚚 24/7 NATIONWIDE SERVICE FLEET',
+];
+
 export default function Hero() {
   const { t } = useLang();
+  const { data } = useAdminData();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [clock, setClock] = useState('00:00:00');
   const timerRef = useRef(null);
+
+  // Dynamically derive products from live data.categories
+  const autoProducts = useMemo(() => {
+    const categories = data?.categories;
+    if (!categories || categories.length === 0) return DEFAULT_PRODUCTS;
+
+    const flattened = categories.flatMap((cat, catIdx) =>
+      (cat.items || []).map((item, itemIdx) => ({
+        id: item.id || item.slug,
+        title: item.title,
+        category: cat.title || 'Refrigeration Equipment',
+        temp: item.tempTag || item.specs?.tempRange || '−20°C → +10°C',
+        capacity: item.specs?.capacityRange || item.specs?.processingCapacity || 'Custom Sized',
+        power: item.specs?.compressorType || 'Precision High COP Unit',
+        image: item.img || '/images/coldroom.jpeg',
+        icon: item.icon || '🧊',
+        slug: item.slug,
+        tagline: item.tagline || item.desc || 'Engineered in Nepal for extreme industrial reliability.',
+        accent: ACCENTS[(catIdx * 2 + itemIdx) % ACCENTS.length],
+      }))
+    );
+
+    return flattened.length > 0 ? flattened.slice(0, 8) : DEFAULT_PRODUCTS;
+  }, [data]);
+
+  // Keep index in bounds if products count changes
+  useEffect(() => {
+    if (currentIdx >= autoProducts.length) {
+      setCurrentIdx(0);
+    }
+  }, [autoProducts.length, currentIdx]);
 
   // Clock tick
   useEffect(() => {
@@ -97,17 +142,19 @@ export default function Hero() {
 
   // 3-Second Automatic Product Photo Auto-Scroll Cycle
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || autoProducts.length === 0) return;
     timerRef.current = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % AUTO_PRODUCTS.length);
+      setCurrentIdx((prev) => (prev + 1) % autoProducts.length);
     }, CYCLE_TIME_MS);
 
     return () => clearInterval(timerRef.current);
-  }, [isPaused]);
+  }, [isPaused, autoProducts.length]);
 
-  const activeProduct = AUTO_PRODUCTS[currentIdx];
+  const activeProduct = autoProducts[currentIdx] || autoProducts[0] || DEFAULT_PRODUCTS[0];
+  const activeMarketingBadge = MARKETING_BADGES[currentIdx % MARKETING_BADGES.length];
+
   const waLink = buildWhatsAppLink(
-    `Hi Kathmandu Chilling, I am inquiring about the ${activeProduct.title} (${activeProduct.temp}). Please send quotation and technical specifications.`
+    `Hi Kathmandu Chilling, I am inquiring about the ${activeProduct.title} (${activeProduct.temp}). Please send factory quotation and technical specifications.`
   );
 
   return (
@@ -125,6 +172,7 @@ export default function Hero() {
           <div className="hero-eyebrow-badge mono">
             <span className="live-pulse-dot"></span>
             <span>{t('heroEyebrow')}</span>
+            <span className="eyebrow-sub-tag">● FACTORY OPERATIONAL</span>
           </div>
 
           <h1 className="hero-main-heading">
@@ -133,6 +181,26 @@ export default function Hero() {
           </h1>
 
           <p className="hero-lead-text">{t('heroLead')}</p>
+
+          {/* Value / Trust Highlights Strip */}
+          <div className="hero-trust-pills">
+            <div className="trust-pill-item">
+              <span className="trust-icon">🛡️</span>
+              <span>2-Yr On-Site Warranty</span>
+            </div>
+            <div className="trust-pill-item">
+              <span className="trust-icon">⚡</span>
+              <span>40% Lower Energy Cost</span>
+            </div>
+            <div className="trust-pill-item">
+              <span className="trust-icon">📋</span>
+              <span>Free DPR &amp; Subsidy Help</span>
+            </div>
+            <div className="trust-pill-item">
+              <span className="trust-icon">🚚</span>
+              <span>All 7 Provinces Delivery</span>
+            </div>
+          </div>
 
           {/* Action Buttons */}
           <div className="hero-btn-group">
@@ -143,7 +211,7 @@ export default function Hero() {
 
             <Link to="/calculator" className="btn btn-hero-calc">
               <span className="calc-icon">⚡</span>
-              <span>Sizing &amp; ROI Calculator</span>
+              <span>{t('heroCtaSecondary')}</span>
             </Link>
 
             <a
@@ -161,15 +229,15 @@ export default function Hero() {
           <div className="hero-metric-strip">
             <div className="metric-cell">
               <strong className="metric-val mono">−20°C → +10°C</strong>
-              <span className="metric-desc">Cold Room Range</span>
+              <span className="metric-desc">Precision Thermal Range</span>
             </div>
             <div className="metric-cell">
-              <strong className="metric-val mono">500–5,000 LPH</strong>
-              <span className="metric-desc">Dairy Plant Capacity</span>
+              <strong className="metric-val mono">500–10,000 LPH</strong>
+              <span className="metric-desc">Dairy Plant Output</span>
             </div>
             <div className="metric-cell">
-              <strong className="metric-val mono">450+ Projects</strong>
-              <span className="metric-desc">Installed Across Nepal</span>
+              <strong className="metric-val mono">{data?.story?.statProjects || '450+ Projects'}</strong>
+              <span className="metric-desc">Installed in Nepal</span>
             </div>
           </div>
         </div>
@@ -181,11 +249,11 @@ export default function Hero() {
           onMouseLeave={() => setIsPaused(false)}
         >
           <div className="hero-showcase-card">
-            {/* Top Telemetry Header */}
+            {/* Top Telemetry Header with Dynamic Advertising Badge */}
             <div className="showcase-top-bar">
               <div className="telemetry-live-pill mono">
                 <span className="telemetry-dot"></span>
-                <span>AUTO-SCROLL · 3S CYCLE</span>
+                <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{activeMarketingBadge}</span>
               </div>
               <div className="telemetry-clock mono">
                 <span>{clock} NPT</span>
@@ -195,19 +263,20 @@ export default function Hero() {
             {/* 3-Second Timer Progress Bar */}
             <div className="showcase-timer-track">
               <div
-                key={`timer-${currentIdx}`}
+                key={`timer-${currentIdx}-${activeProduct.id}`}
                 className={`showcase-timer-fill ${isPaused ? 'paused' : 'running'}`}
               ></div>
             </div>
 
             {/* Auto-Cycling Product Photo Stage */}
             <div className="showcase-image-stage">
-              {AUTO_PRODUCTS.map((prod, idx) => (
+              {autoProducts.map((prod, idx) => (
                 <div
-                  key={prod.id}
+                  key={prod.id || idx}
                   className={`showcase-slide ${idx === currentIdx ? 'active' : ''}`}
                 >
                   <img
+                    key={prod.image}
                     src={prod.image}
                     alt={prod.title}
                     className="showcase-prod-img"
@@ -256,9 +325,9 @@ export default function Hero() {
 
               {/* 3-Second Interactive Thumbnail Navigation Pills */}
               <div className="showcase-dot-nav">
-                {AUTO_PRODUCTS.map((p, idx) => (
+                {autoProducts.map((p, idx) => (
                   <button
-                    key={p.id}
+                    key={p.id || idx}
                     className={`dot-pill ${idx === currentIdx ? 'active' : ''}`}
                     onClick={() => setCurrentIdx(idx)}
                     title={p.title}

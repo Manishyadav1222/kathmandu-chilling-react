@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * Modern, resilient image wrapper:
  *  - uniform aspect-ratio frame (no layout shift)
  *  - lazy loading (unless `eager`)
  *  - shimmer skeleton while the image loads
- *  - automatic branded fallback (icon + name) if the URL fails
+ *  - automatic branded fallback (icon + name) if the URL fails or is empty
+ *  - auto-resets loaded & failed states when `src` updates (e.g. from Admin edits)
  *  - reports load success/failure to the parent via onLoaded/onError
  */
 export default function SmartImage({
@@ -21,7 +22,14 @@ export default function SmartImage({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  if (failed) {
+  // Automatically reset load status when the image source changes in real-time
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [src]);
+
+  // If no source provided or failed, immediately display rich branded fallback
+  if (!src || failed) {
     return (
       <div
         className={`smart-fallback ${className}`.trim()}
@@ -30,7 +38,7 @@ export default function SmartImage({
         aria-label={alt}
       >
         <span className="smart-fallback-icon">{icon}</span>
-        <span className="smart-fallback-name">{alt}</span>
+        <span className="smart-fallback-name">{alt || 'Kathmandu Chilling Equipment'}</span>
       </div>
     );
   }
@@ -41,8 +49,9 @@ export default function SmartImage({
       style={{ aspectRatio: ratio }}
     >
       <img
+        key={src}
         src={src}
-        alt={alt}
+        alt={alt || ''}
         loading={eager ? 'eager' : 'lazy'}
         onLoad={() => {
           setLoaded(true);

@@ -11,14 +11,17 @@ export default function Projects() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedProject, setSelectedProject] = useState(null);
 
-  const filters = ['All', 'Cold Storage', 'Dairy Plants', 'Pharma & Hospital', 'Blast Freezers', 'Transport Refrigeration'];
+  const filters = ['All', 'Cold Storage', 'Dairy Plants', 'Pharma & Hospital', 'Blast Freezers', 'Transport Refrigeration', 'Commercial Retail'];
 
-  const allProjects = data?.projects || PROJECTS;
+  const allProjects = data?.projects && data.projects.length > 0 ? data.projects : PROJECTS;
 
   const filteredProjects =
     activeFilter === 'All'
       ? allProjects
-      : allProjects.filter((p) => (p.category || p.equipment || '').toLowerCase().includes(activeFilter.toLowerCase()) || activeFilter === 'All');
+      : allProjects.filter((p) => {
+          const cat = (p.category || p.equipment || '').toLowerCase();
+          return cat.includes(activeFilter.toLowerCase());
+        });
 
   return (
     <section className="projects-section" id="projects">
@@ -48,34 +51,36 @@ export default function Projects() {
         {/* Projects Grid */}
         <div className="projects-grid">
           {filteredProjects.map((project) => (
-            <article className="project-card" key={project.id}>
+            <article className="project-card" key={project.id || project.slug}>
               <div className="project-media">
-                <SmartImage src={project.img} alt={project.title} icon="🏭" ratio="16/10" />
-                <span className="project-cat-badge">{project.category}</span>
-                <span className="project-temp-badge mono">{project.tempAchieved}</span>
+                <SmartImage src={project.img || project.image} alt={project.title} icon="🏭" ratio="16/10" />
+                <span className="project-cat-badge">{project.category || 'Industrial Cold Chain'}</span>
+                {project.tempAchieved && <span className="project-temp-badge mono">{project.tempAchieved}</span>}
               </div>
 
               <div className="project-body">
                 <div className="project-meta-row mono">
-                  <span className="project-loc">📍 {project.location}</span>
-                  <span className="project-year">Yr {project.year}</span>
+                  <span className="project-loc">📍 {project.location || 'Nepal'}</span>
+                  <span className="project-year">Yr {project.year || '2025'}</span>
                 </div>
 
                 <h3>{project.title}</h3>
                 <div className="project-client-name">
-                  <strong>Client:</strong> {project.client}
+                  <strong>Client:</strong> {project.client || 'Commercial Enterprise'}
                 </div>
-                <p>{project.summary}</p>
+                <p>{project.summary || project.desc || 'Turnkey cold chain engineering and installation.'}</p>
 
                 {/* Performance Metrics Row */}
-                <div className="project-metrics-grid">
-                  {project.metrics?.map((m, idx) => (
-                    <div className="p-metric-item" key={idx}>
-                      <span className="p-metric-val">{m.val}</span>
-                      <span className="p-metric-label">{m.label}</span>
-                    </div>
-                  ))}
-                </div>
+                {project.metrics && project.metrics.length > 0 && (
+                  <div className="project-metrics-grid">
+                    {project.metrics.map((m, idx) => (
+                      <div className="p-metric-item" key={idx}>
+                        <span className="p-metric-val">{m.val}</span>
+                        <span className="p-metric-label">{m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="project-actions">
                   <button
@@ -110,7 +115,7 @@ export default function Projects() {
 
             <div className="modal-header">
               <div className="modal-badge-row mono">
-                <span className="badge-highlight">{selectedProject.category}</span>
+                <span className="badge-highlight">{selectedProject.category || 'Cold Chain'}</span>
                 <span>📍 {selectedProject.location}</span>
                 <span>Year {selectedProject.year}</span>
               </div>
@@ -119,37 +124,46 @@ export default function Projects() {
             </div>
 
             <div className="modal-media">
-              <SmartImage src={selectedProject.img} alt={selectedProject.title} icon="🏭" ratio="16/9" />
+              <SmartImage src={selectedProject.img || selectedProject.image} alt={selectedProject.title} icon="🏭" ratio="16/9" />
             </div>
 
             <div className="modal-body">
-              <p className="modal-desc">{selectedProject.summary}</p>
+              <p className="modal-desc">{selectedProject.summary || selectedProject.desc}</p>
 
               {/* Metrics */}
-              <div className="modal-metrics-row">
-                {selectedProject.metrics?.map((m, i) => (
-                  <div className="modal-metric-card" key={i}>
-                    <span className="m-val">{m.val}</span>
-                    <span className="m-lbl">{m.label}</span>
-                  </div>
-                ))}
-              </div>
+              {selectedProject.metrics && selectedProject.metrics.length > 0 && (
+                <div className="modal-metrics-row">
+                  {selectedProject.metrics.map((m, i) => (
+                    <div className="modal-metric-card" key={i}>
+                      <span className="m-val">{m.val}</span>
+                      <span className="m-lbl">{m.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Equipment Supplied */}
-              {selectedProject.equipmentSupplied?.length > 0 && (
+              {((selectedProject.equipmentSupplied && selectedProject.equipmentSupplied.length > 0) || selectedProject.equipment) && (
                 <div className="modal-equipment-section">
                   <h4>Equipment &amp; Hardware Supplied:</h4>
                   <ul>
-                    {selectedProject.equipmentSupplied.map((eq, i) => (
+                    {(selectedProject.equipmentSupplied || [selectedProject.equipment]).map((eq, i) => (
                       <li key={i}>✓ {eq}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              <div className="modal-cta-box">
+              {selectedProject.testimonial && (
+                <div className="modal-testimonial-box" style={{ marginTop: '16px', padding: '14px', background: 'rgba(53, 214, 255, 0.06)', borderRadius: '8px', borderLeft: '3px solid var(--admin-cyan)' }}>
+                  <strong style={{ color: '#fff', fontSize: '13px', display: 'block', marginBottom: '4px' }}>Client Feedback:</strong>
+                  <em style={{ color: '#cbd5e1', fontSize: '13px' }}>"{selectedProject.testimonial}"</em>
+                </div>
+              )}
+
+              <div className="modal-cta-box" style={{ marginTop: '20px' }}>
                 <a
-                  href={buildWhatsAppLink(`Hi Kathmandu Chilling, I am interested in designing a project similar to ${selectedProject.title} (${selectedProject.capacity}).`)}
+                  href={buildWhatsAppLink(`Hi Kathmandu Chilling, I am interested in designing a project similar to ${selectedProject.title} (${selectedProject.capacity || 'custom'}).`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn whatsapp btn-large"

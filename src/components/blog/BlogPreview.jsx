@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom';
 import { getLatestPosts, formatDate } from '../../data/blog';
 import { useReveal } from '../../hooks/useReveal';
 import { useAdminData } from '../../context/AdminDataContext.jsx';
+import SmartImage from '../SmartImage.jsx';
 
 export default function BlogPreview() {
   const headReveal = useReveal();
   const { data } = useAdminData();
-  const rawList = data?.blogs || getLatestPosts(3);
+  const rawList = data?.blogs && data.blogs.length > 0 ? data.blogs : getLatestPosts(3);
   const posts = rawList.slice(0, 3);
 
   return (
@@ -36,21 +37,28 @@ export default function BlogPreview() {
 
         <div className="blog-grid">
           {posts.map((post) => (
-            <article className="blog-card" key={post.slug}>
-              <Link to={`/blog/${post.slug}`} className="blog-card-link">
+            <article className="blog-card" key={post.slug || post.id}>
+              <Link to={`/blog/${post.slug || post.id}`} className="blog-card-link">
                 <div className="blog-card-media">
-                  <img src={post.image} alt={post.imageAlt} loading="lazy" />
-                  {post.tags[0] && <span className="blog-tag">{post.tags[0]}</span>}
+                  <SmartImage
+                    src={post.image || post.img}
+                    alt={post.imageAlt || post.title}
+                    icon="📖"
+                    ratio="16/10"
+                  />
+                  {(post.tags?.[0] || post.category) && (
+                    <span className="blog-tag">{post.tags?.[0] || post.category}</span>
+                  )}
                 </div>
                 <div className="blog-card-body">
                   <div className="blog-meta mono">
                     <span>{formatDate(post.date)}</span>
                     <span>·</span>
-                    <span>{post.readingTime} min read</span>
+                    <span>{post.readingTime || post.readTime || 5} min read</span>
                   </div>
                   <h3>{post.title}</h3>
                   <p>{post.excerpt}</p>
-                  <span className="blog-read-more">Read the article</span>
+                  <span className="blog-read-more">Read the article →</span>
                 </div>
               </Link>
             </article>

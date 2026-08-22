@@ -1,0 +1,23 @@
+{
+  "name": "Kathmandu Chilling & Refrigerator Udhyog Pvt. Ltd.",
+  "short_name": "Kathmandu Chilling",
+  "description": "Nepal's leading industrial refrigeration, cold room, chilling vat and turnkey dairy processing plant manufacturer in Kathmandu.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060c16",
+  "theme_color": "#060c16",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/kcr-logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

@@ -17,13 +17,18 @@ export default function ProductDetail() {
 
   // Support both /products/:slug, /product/:slug and /product-detail?product=xyz
   const productSlug = slug || searchParams.get('product') || 'cold-room';
-  const allProducts = (data?.categories || PRODUCT_GROUPS).flatMap((c) => c.items || []);
-  const item = allProducts.find((p) => p.slug === productSlug) || getProductBySlug(productSlug);
+  const allProducts = (data?.categories || PRODUCT_GROUPS).flatMap((c) =>
+    (c.items || []).map((prod) => ({ ...prod, categoryName: c.title }))
+  );
+  const item = allProducts.find((p) => p.slug === productSlug || p.id === productSlug) || getProductBySlug(productSlug);
 
   // Gallery photos list
-  const galleryList = item?.gallery || [
-    { url: item?.img || '/images/products/cold-room-main.jpg', caption: 'High-Performance Factory Build' },
-  ];
+  const galleryList =
+    item?.gallery && item.gallery.length > 0
+      ? item.gallery
+      : item?.img
+      ? [{ url: item.img, caption: item.title || 'High-Performance Factory Build' }]
+      : [];
 
   // SEO & Structured Data Schemas
   const jsonLd = useMemo(() => {
@@ -102,8 +107,9 @@ export default function ProductDetail() {
   );
 
   // Find related products in same group
-  const relatedGroup = PRODUCT_GROUPS.find((g) => g.id === item.categoryId) || PRODUCT_GROUPS[0];
-  const relatedProducts = relatedGroup.items.filter((p) => p.slug !== item.slug).slice(0, 3);
+  const categoriesList = data?.categories && data.categories.length > 0 ? data.categories : PRODUCT_GROUPS;
+  const relatedGroup = categoriesList.find((g) => g.id === item.categoryId || g.title === item.categoryName) || categoriesList[0] || { title: 'Equipment', items: [] };
+  const relatedProducts = (relatedGroup.items || []).filter((p) => p.slug !== item.slug).slice(0, 3);
 
   // Print/Download Spec Sheet
   const handlePrintSpecs = () => {
@@ -358,7 +364,7 @@ export default function ProductDetail() {
           <section className="p-section">
             <div className="p-section-head">
               <div className="eyebrow">Related Solutions</div>
-              <h2>Explore More {relatedGroup.title}</h2>
+              <h2>Explore More {relatedGroup?.title || 'Refrigeration Equipment'}</h2>
             </div>
             <div className="prod-grid">
               {relatedProducts.map((p) => (

@@ -3,6 +3,7 @@ import {
   PRODUCT_GROUPS as INITIAL_CATEGORIES,
   PROJECTS as INITIAL_PROJECTS,
   CONTACT as INITIAL_CONTACT,
+  CLIENTS as INITIAL_CLIENTS,
   HERO_CYCLE,
 } from '../data/content';
 import { BLOG_POSTS as INITIAL_BLOGS } from '../data/blog';
@@ -236,6 +237,101 @@ const INITIAL_TEAM = [
   },
 ];
 
+/**
+ * Client-side image compression helper to optimize uploaded files before storing.
+ * Keeps photos crisp in HD while shrinking file size to ~50-150KB to preserve localStorage headroom.
+ */
+export function optimizeImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => resolve(e.target.result); // Fallback to raw data URL if canvas fails
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Initial Video Reels & 9:16 Shorts
+const INITIAL_VIDEOS = [
+  {
+    id: 'vid-1',
+    title: 'Turnkey Modular Cold Storage Chamber Installation',
+    category: 'Cold Storage',
+    platform: 'Direct Upload',
+    ratio: '9:16',
+    videoUrl: '/videos/0821_1.mp4',
+    posterUrl: '/images/coldroom.jpeg',
+    tag: 'SITE REEL',
+    tagColor: '#35d6ff',
+    duration: '0:45',
+    desc: 'Live high-altitude site fabrication of 120mm PUF modular cold room chamber in Kathmandu Valley with dual Bitzer scroll units.',
+    waMsg: 'Hi Kathmandu Chilling, I saw your Cold Storage Chamber video reel and would like to build a similar project for our facility.',
+    featured: true,
+    views: '3.4K',
+    date: '2026-08-20',
+  },
+  {
+    id: 'vid-2',
+    title: 'Industrial Bulk Milk Chilling VAT (BMC) Live Pressure & Agitation Test',
+    category: 'Dairy Processing',
+    platform: 'Direct Upload',
+    ratio: '9:16',
+    videoUrl: '/videos/0821.mp4',
+    posterUrl: '/images/chilling_vat.jpeg',
+    tag: 'FACTORY TEST',
+    tagColor: '#00b4d8',
+    duration: '0:52',
+    desc: 'Factory quality testing of laser-welded dimple cooling jacket on 1,000L Bulk Milk Chilling VAT running at our Naikap plant.',
+    waMsg: 'Hi Kathmandu Chilling, I saw your Milk Chilling VAT factory testing video and want quotation for a dairy collection center.',
+    featured: true,
+    views: '5.1K',
+    date: '2026-08-18',
+  },
+  {
+    id: 'vid-3',
+    title: 'Shock Blast Freezing Cycle & Core Temperature Pull-Down',
+    category: 'Blast Freezers',
+    platform: 'TikTok',
+    ratio: '9:16',
+    videoUrl: '/videos/0821_1.mp4',
+    posterUrl: '/images/Blastchiller.jpeg',
+    tag: 'TIKTOK REEL',
+    tagColor: '#ff7a45',
+    duration: '0:38',
+    desc: 'Rapid thermal pull-down demo: pulling poultry & bakery core temperature from +70°C to -18°C in under 90 minutes.',
+    waMsg: 'Hi Kathmandu Chilling, I saw your Blast Chiller video on TikTok and want specifications for our commercial kitchen.',
+    featured: true,
+    views: '12.8K',
+    date: '2026-08-15',
+  },
+];
+
 export function AdminDataProvider({ children }) {
   // Load data from localStorage or fallback to defaults
   const [data, setData] = useState(() => {
@@ -249,9 +345,11 @@ export function AdminDataProvider({ children }) {
           blogs: parsed.blogs || INITIAL_BLOGS,
           inquiries: parsed.inquiries || INITIAL_INQUIRIES,
           promotions: parsed.promotions || INITIAL_PROMOTIONS,
+          videos: parsed.videos || INITIAL_VIDEOS,
           contact: parsed.contact || INITIAL_CONTACT,
           story: parsed.story || INITIAL_STORY,
           team: parsed.team || INITIAL_TEAM,
+          clients: parsed.clients || INITIAL_CLIENTS,
           announcement: parsed.announcement || '★ NEPAL’S LEADING COLD ROOM & DAIRY EQUIPMENT MANUFACTURER · 24/7 NATIONWIDE SERVICE ★',
         };
       }
@@ -264,9 +362,11 @@ export function AdminDataProvider({ children }) {
       blogs: INITIAL_BLOGS,
       inquiries: INITIAL_INQUIRIES,
       promotions: INITIAL_PROMOTIONS,
+      videos: INITIAL_VIDEOS,
       contact: INITIAL_CONTACT,
       story: INITIAL_STORY,
       team: INITIAL_TEAM,
+      clients: INITIAL_CLIENTS,
       announcement: '★ NEPAL’S LEADING COLD ROOM & DAIRY EQUIPMENT MANUFACTURER · 24/7 NATIONWIDE SERVICE ★',
     };
   });
@@ -282,10 +382,11 @@ export function AdminDataProvider({ children }) {
     return { isAuthenticated: false, user: null };
   });
 
-  // Save to localStorage on data change
+  // Save to localStorage on data change and broadcast update event
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      window.dispatchEvent(new CustomEvent('kcr_admin_data_updated', { detail: data }));
     } catch (e) {
       console.error('Failed to save admin data:', e);
     }
@@ -371,111 +472,289 @@ export function AdminDataProvider({ children }) {
     }));
   };
 
-  // CRUD for Products
+  // ============================================================
+  // CRUD FOR PRODUCTS (ROBUST UNIVERSAL MATCHER & CATEGORY SYNC)
+  // ============================================================
   const addProduct = (categoryId, product) => {
+    const targetCatId = categoryId || data.categories[0]?.id || 'refrigeration';
+    const cleanSlug =
+      product.slug ||
+      product.title
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') ||
+      'product-' + Date.now();
+
     const newProd = {
       id: 'prod-' + Date.now(),
-      slug: product.slug || product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      slug: cleanSlug,
+      icon: product.icon || '🧊',
+      title: product.title || 'New Equipment',
+      shortTitle: product.shortTitle || product.title || 'Equipment',
+      tempTag: product.tempTag || '−20°C → +10°C',
+      tagline: product.tagline || '',
+      desc: product.desc || '',
+      img: product.img || '/images/coldroom.jpeg',
+      modelType: product.modelType || 'coldRoom',
+      specs: product.specs || {},
+      highlights: product.highlights || [],
+      applications: product.applications || [],
+      faqs: product.faqs || [],
+      gallery:
+        product.gallery && product.gallery.length > 0
+          ? product.gallery
+          : [{ url: product.img || '/images/coldroom.jpeg', caption: product.title || 'Installation' }],
       ...product,
     };
+
     setData((prev) => ({
       ...prev,
       categories: prev.categories.map((cat) =>
-        cat.id === categoryId ? { ...cat, items: [...cat.items, newProd] } : cat
+        cat.id === targetCatId ? { ...cat, items: [newProd, ...cat.items] } : cat
       ),
     }));
+    return newProd;
   };
 
-  const updateProduct = (categoryId, productId, updatedProduct) => {
+  /**
+   * Universal updateProduct:
+   * Supports both 2-arg: updateProduct(identifier, updatedProduct, [newCategoryId])
+   * and 3-arg: updateProduct(categoryId, identifier, updatedProduct)
+   */
+  const updateProduct = (arg1, arg2, arg3) => {
+    let identifier;
+    let updatedProduct;
+    let targetCatId = null;
+
+    if (typeof arg2 === 'object' && arg2 !== null) {
+      // Called as updateProduct(identifier, updatedProduct, [targetCategoryId])
+      identifier = arg1;
+      updatedProduct = arg2;
+      targetCatId = arg3 || updatedProduct.categoryId;
+    } else {
+      // Called as updateProduct(categoryId, identifier, updatedProduct)
+      identifier = arg2;
+      updatedProduct = arg3 || {};
+      targetCatId = arg1;
+    }
+
+    setData((prev) => {
+      let foundItem = null;
+      let originalCatId = null;
+
+      // 1. Locate existing product
+      for (const cat of prev.categories) {
+        const item = cat.items.find(
+          (i) => i.id === identifier || i.slug === identifier
+        );
+        if (item) {
+          foundItem = item;
+          originalCatId = cat.id;
+          break;
+        }
+      }
+
+      const mergedProduct = {
+        ...(foundItem || {}),
+        ...updatedProduct,
+      };
+
+      // Synchronize primary gallery photo with img if gallery is empty
+      if (!mergedProduct.gallery || mergedProduct.gallery.length === 0) {
+        mergedProduct.gallery = [{ url: mergedProduct.img, caption: mergedProduct.title }];
+      }
+
+      const destinationCatId = targetCatId || originalCatId || prev.categories[0]?.id;
+
+      // 2. If moving categories
+      if (originalCatId && destinationCatId && originalCatId !== destinationCatId) {
+        return {
+          ...prev,
+          categories: prev.categories.map((cat) => {
+            if (cat.id === originalCatId) {
+              return {
+                ...cat,
+                items: cat.items.filter(
+                  (i) => i.id !== identifier && i.slug !== identifier
+                ),
+              };
+            }
+            if (cat.id === destinationCatId) {
+              return {
+                ...cat,
+                items: [...cat.items, mergedProduct],
+              };
+            }
+            return cat;
+          }),
+        };
+      }
+
+      // 3. Update in-place in current category or fallback match
+      return {
+        ...prev,
+        categories: prev.categories.map((cat) => ({
+          ...cat,
+          items: cat.items.map((item) =>
+            item.id === identifier || item.slug === identifier
+              ? mergedProduct
+              : item
+          ),
+        })),
+      };
+    });
+  };
+
+  /**
+   * Universal deleteProduct:
+   * Supports deleteProduct(identifier) or deleteProduct(categoryId, identifier)
+   */
+  const deleteProduct = (arg1, arg2) => {
+    const identifier = arg2 || arg1;
     setData((prev) => ({
       ...prev,
-      categories: prev.categories.map((cat) => {
-        if (cat.id === categoryId) {
-          return {
-            ...cat,
-            items: cat.items.map((item) =>
-              item.id === productId || item.slug === productId ? { ...item, ...updatedProduct } : item
-            ),
-          };
-        }
-        return cat;
-      }),
+      categories: prev.categories.map((cat) => ({
+        ...cat,
+        items: cat.items.filter(
+          (item) => item.id !== identifier && item.slug !== identifier
+        ),
+      })),
     }));
   };
 
-  const deleteProduct = (categoryId, productId) => {
-    setData((prev) => ({
-      ...prev,
-      categories: prev.categories.map((cat) => {
-        if (cat.id === categoryId) {
-          return {
-            ...cat,
-            items: cat.items.filter((item) => item.id !== productId && item.slug !== productId),
-          };
-        }
-        return cat;
-      }),
-    }));
-  };
-
-  // CRUD for Projects
+  // ============================================================
+  // CRUD FOR PROJECTS (CASE STUDIES)
+  // ============================================================
   const addProject = (project) => {
     const newProj = {
       id: 'proj-' + Date.now(),
+      slug:
+        project.slug ||
+        project.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+        'project-' + Date.now(),
+      category: project.category || 'Cold Storage',
+      tempAchieved: project.tempAchieved || '−20°C to +4°C',
+      summary: project.summary || project.desc || '',
+      desc: project.desc || project.summary || '',
+      img: project.img || '/images/projects/chandragiri-project.jpg',
+      metrics: project.metrics || [
+        { label: 'Capacity', val: project.capacity || '50 MT' },
+        { label: 'Year', val: project.year || '2025' },
+      ],
+      equipmentSupplied: project.equipmentSupplied || (project.equipment ? [project.equipment] : []),
       ...project,
     };
     setData((prev) => ({
       ...prev,
       projects: [newProj, ...prev.projects],
     }));
+    return newProj;
   };
 
   const updateProject = (id, updatedProject) => {
     setData((prev) => ({
       ...prev,
-      projects: prev.projects.map((p) => (p.id === id ? { ...p, ...updatedProject } : p)),
+      projects: prev.projects.map((p) =>
+        p.id === id || p.slug === id
+          ? {
+              ...p,
+              ...updatedProject,
+              summary: updatedProject.summary || updatedProject.desc || p.summary,
+              desc: updatedProject.desc || updatedProject.summary || p.desc,
+            }
+          : p
+      ),
     }));
   };
 
   const deleteProject = (id) => {
     setData((prev) => ({
       ...prev,
-      projects: prev.projects.filter((p) => p.id !== id),
+      projects: prev.projects.filter((p) => p.id !== id && p.slug !== id),
     }));
   };
 
-  // CRUD for Blogs
+  // ============================================================
+  // CRUD FOR BLOGS & SEO GUIDES
+  // ============================================================
   const addBlog = (blog) => {
+    const cleanSlug =
+      blog.slug ||
+      blog.title
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') ||
+      'article-' + Date.now();
+
+    const newBlog = {
+      id: 'blog-' + Date.now(),
+      slug: cleanSlug,
+      date: new Date().toISOString().split('T')[0],
+      status: blog.status || 'Published',
+      image: blog.image || blog.img || '/images/blog/cold-room-sizing.jpg',
+      img: blog.img || blog.image || '/images/blog/cold-room-sizing.jpg',
+      readingTime: blog.readingTime || blog.readTime || 5,
+      readTime: blog.readTime || blog.readingTime || '5 min read',
+      author: blog.author || 'KCR Engineering Team',
+      tags: Array.isArray(blog.tags) ? blog.tags : [blog.category || 'Refrigeration Guide'],
+      category: blog.category || (Array.isArray(blog.tags) ? blog.tags[0] : 'Refrigeration Guide'),
+      aiSummary: blog.aiSummary || {
+        keyTakeaway: blog.excerpt || '',
+        quickFacts: [],
+      },
+      sections: blog.sections || [
+        {
+          heading: 'Overview & Technical Analysis',
+          paragraphs: typeof blog.content === 'string' ? blog.content.split('\n\n').filter(Boolean) : [],
+        },
+      ],
+      content: typeof blog.content === 'string' ? blog.content : '',
+      faqs: blog.faqs || [],
+      ...blog,
+    };
+
     setData((prev) => ({
       ...prev,
-      blogs: [
-        {
-          id: 'blog-' + Date.now(),
-          slug: blog.slug || blog.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          status: 'Published',
-          ...blog,
-        },
-        ...prev.blogs,
-      ],
+      blogs: [newBlog, ...prev.blogs],
     }));
+    return newBlog;
   };
 
   const updateBlog = (id, updatedBlog) => {
     setData((prev) => ({
       ...prev,
-      blogs: prev.blogs.map((b) => (b.id === id ? { ...b, ...updatedBlog } : b)),
+      blogs: prev.blogs.map((b) => {
+        if (b.id === id || b.slug === id) {
+          const imageSrc = updatedBlog.image || updatedBlog.img || b.image || b.img;
+          const readTimeVal = updatedBlog.readingTime || updatedBlog.readTime || b.readingTime || b.readTime;
+          const tagsVal = updatedBlog.tags || (updatedBlog.category ? [updatedBlog.category] : b.tags);
+
+          return {
+            ...b,
+            ...updatedBlog,
+            image: imageSrc,
+            img: imageSrc,
+            readingTime: typeof readTimeVal === 'number' ? readTimeVal : parseInt(readTimeVal, 10) || 5,
+            readTime: typeof readTimeVal === 'string' ? readTimeVal : `${readTimeVal} min read`,
+            tags: tagsVal,
+            category: updatedBlog.category || (tagsVal ? tagsVal[0] : b.category),
+          };
+        }
+        return b;
+      }),
     }));
   };
 
   const deleteBlog = (id) => {
     setData((prev) => ({
       ...prev,
-      blogs: prev.blogs.filter((b) => b.id !== id),
+      blogs: prev.blogs.filter((b) => b.id !== id && b.slug !== id),
     }));
   };
 
-  // CRUD for Promotions
+  // ============================================================
+  // CRUD FOR PROMOTIONS
+  // ============================================================
   const updatePromotion = (id, updatedPromo) => {
     setData((prev) => ({
       ...prev,
@@ -483,7 +762,9 @@ export function AdminDataProvider({ children }) {
     }));
   };
 
-  // CRUD for Company Story & Mission
+  // ============================================================
+  // CRUD FOR COMPANY STORY & TEAM
+  // ============================================================
   const updateCompanyStory = (updatedStory) => {
     setData((prev) => ({
       ...prev,
@@ -491,7 +772,6 @@ export function AdminDataProvider({ children }) {
     }));
   };
 
-  // CRUD for Team Members
   const addTeamMember = (member) => {
     const newMember = {
       id: 'tm-' + Date.now(),
@@ -515,6 +795,83 @@ export function AdminDataProvider({ children }) {
     setData((prev) => ({
       ...prev,
       team: (prev.team || []).filter((m) => m.id !== id),
+    }));
+  };
+
+  // ============================================================
+  // CRUD FOR CLIENT LOGOS & PARTNERS
+  // ============================================================
+  const addClient = (client) => {
+    const newClient = {
+      id: 'client-' + Date.now(),
+      name: client.name || 'New Client Enterprise',
+      img: client.img || '/images/kcr-logo.svg',
+      ...client,
+    };
+    setData((prev) => ({
+      ...prev,
+      clients: [...(prev.clients || []), newClient],
+    }));
+    return newClient;
+  };
+
+  const updateClient = (idOrIdx, updatedClient) => {
+    setData((prev) => ({
+      ...prev,
+      clients: (prev.clients || []).map((c, idx) =>
+        c.id === idOrIdx || idx === idOrIdx || c.name === idOrIdx
+          ? { ...c, ...updatedClient }
+          : c
+      ),
+    }));
+  };
+
+  const deleteClient = (idOrIdx) => {
+    setData((prev) => ({
+      ...prev,
+      clients: (prev.clients || []).filter((c, idx) => c.id !== idOrIdx && idx !== idOrIdx && c.name !== idOrIdx),
+    }));
+  };
+
+  // Videos & Reels CRUD
+  const addVideo = (videoPayload) => {
+    const newVideo = {
+      id: `vid-${Date.now()}`,
+      title: videoPayload.title || 'Project Video Reel',
+      category: videoPayload.category || 'Cold Storage',
+      platform: videoPayload.platform || 'Direct Upload',
+      ratio: videoPayload.ratio || '9:16',
+      videoUrl: videoPayload.videoUrl || '',
+      posterUrl: videoPayload.posterUrl || '',
+      tag: videoPayload.tag || 'SITE REEL',
+      tagColor: videoPayload.tagColor || '#35d6ff',
+      duration: videoPayload.duration || '0:45',
+      desc: videoPayload.desc || '',
+      waMsg: videoPayload.waMsg || `Hi Kathmandu Chilling, I am inquiring about the ${videoPayload.title || 'equipment'} video reel.`,
+      featured: videoPayload.featured ?? true,
+      views: '1.2K',
+      date: new Date().toISOString().split('T')[0],
+    };
+    setData((prev) => ({
+      ...prev,
+      videos: [newVideo, ...(prev.videos || [])],
+    }));
+    return newVideo;
+  };
+
+  const updateVideo = (id, updatedFields) => {
+    setData((prev) => ({
+      ...prev,
+      videos: (prev.videos || []).map((v) =>
+        v.id === id || v.slug === id ? { ...v, ...updatedFields } : v
+      ),
+    }));
+  };
+
+  const deleteVideo = (id) => {
+    setData((prev) => ({
+      ...prev,
+      videos: (prev.videos || []).filter((v) => v.id !== id && v.slug !== id),
     }));
   };
 
@@ -558,9 +915,11 @@ export function AdminDataProvider({ children }) {
       blogs: INITIAL_BLOGS,
       inquiries: INITIAL_INQUIRIES,
       promotions: INITIAL_PROMOTIONS,
+      videos: INITIAL_VIDEOS,
       contact: INITIAL_CONTACT,
       story: INITIAL_STORY,
       team: INITIAL_TEAM,
+      clients: INITIAL_CLIENTS,
       announcement: '★ NEPAL’S LEADING COLD ROOM & DAIRY EQUIPMENT MANUFACTURER · 24/7 NATIONWIDE SERVICE ★',
     };
     setData(defaultData);
@@ -592,11 +951,19 @@ export function AdminDataProvider({ children }) {
         deleteBlog,
         // Promotions
         updatePromotion,
-        // Story & Team (New)
+        // Videos & Reels
+        addVideo,
+        updateVideo,
+        deleteVideo,
+        // Story & Team
         updateCompanyStory,
         addTeamMember,
         updateTeamMember,
         deleteTeamMember,
+        // Clients & Partners
+        addClient,
+        updateClient,
+        deleteClient,
         // Settings
         updateSettings,
         // Utilities

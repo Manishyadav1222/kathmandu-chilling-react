@@ -21,6 +21,7 @@ import Footer from './components/Footer.jsx';
 import FloatingActions from './components/FloatingActions.jsx';
 import ScrollManager from './components/ScrollManager.jsx';
 import BlogPreview from './components/blog/BlogPreview.jsx';
+import VideoReels from './components/VideoReels.jsx';
 import { useSeo } from './hooks/useSeo';
 import { AdminDataProvider } from './context/AdminDataContext.jsx';
 
@@ -49,6 +50,7 @@ const AdminDashboard = lazy(() => import('./admin/AdminDashboard.jsx'));
 const AdminProducts = lazy(() => import('./admin/AdminProducts.jsx'));
 const AdminProjects = lazy(() => import('./admin/AdminProjects.jsx'));
 const AdminStory = lazy(() => import('./admin/AdminStory.jsx'));
+const AdminVideos = lazy(() => import('./admin/AdminVideos.jsx'));
 const AdminBlogs = lazy(() => import('./admin/AdminBlogs.jsx'));
 const AdminInquiries = lazy(() => import('./admin/AdminInquiries.jsx'));
 const AdminPromotions = lazy(() => import('./admin/AdminPromotions.jsx'));
@@ -78,6 +80,7 @@ function Home() {
       <Marquee />
       <IndustryShowcase />
       <Products />
+      <VideoReels />
       <PromoBanners />
       <ColdCalculator />
       <TechEdge />
@@ -126,6 +129,7 @@ export default function App() {
                 <Route path="projects" element={<AdminProjects />} />
                 <Route path="story" element={<AdminStory />} />
                 <Route path="team" element={<AdminStory />} />
+                <Route path="videos" element={<AdminVideos />} />
                 <Route path="blogs" element={<AdminBlogs />} />
                 <Route path="promotions" element={<AdminPromotions />} />
                 <Route path="settings" element={<AdminSettings />} />

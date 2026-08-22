@@ -84,6 +84,16 @@ export default function AdminDashboard() {
           <div className="kpi-label">Published Articles</div>
           <div className="kpi-sub mono">Engineering guides &amp; Schema FAQs</div>
         </div>
+
+        <div className="kpi-card" style={{ borderColor: 'rgba(53,214,255,0.4)' }}>
+          <div className="kpi-top">
+            <span className="kpi-icon">📹</span>
+            <span className="kpi-badge mono">9:16 Shorts</span>
+          </div>
+          <div className="kpi-val mono">{(data.videos || []).length}</div>
+          <div className="kpi-label">Video Reels &amp; TikToks</div>
+          <div className="kpi-sub mono">Live site fabrication &amp; tests</div>
+        </div>
       </div>
 
       {/* Quick Launchpad Buttons */}
@@ -92,8 +102,11 @@ export default function AdminDashboard() {
         <Link to="/admin/products" className="btn-launchpad">
           <span>+ Add Equipment</span>
         </Link>
+        <Link to="/admin/videos" className="btn-launchpad">
+          <span>+ Upload Video Reel</span>
+        </Link>
         <Link to="/admin/projects" className="btn-launchpad">
-          <span>+ New Project Case Study</span>
+          <span>+ New Case Study</span>
         </Link>
         <Link to="/admin/blogs" className="btn-launchpad">
           <span>+ Publish Blog Guide</span>

@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useAdminData } from '../context/AdminDataContext.jsx';
+import { useAdminData, optimizeImageFile } from '../context/AdminDataContext.jsx';
 
 export default function AdminBlogs() {
   const { data, addBlog, updateBlog, deleteBlog } = useAdminData();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [saveAlert, setSaveAlert] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
     title: '',
     category: 'Engineering & Technology',
-    readTime: '6 min read',
+    readTime: '5 min read',
     author: 'KCR Engineering Team',
     img: '',
     excerpt: '',
@@ -47,17 +49,34 @@ export default function AdminBlogs() {
 
   const openEditModal = (blog) => {
     setEditingId(blog.id);
+    const blogImg = blog.image || blog.img || '';
+    const readTimeStr = blog.readTime || (typeof blog.readingTime === 'number' ? `${blog.readingTime} min read` : blog.readingTime) || '5 min read';
+    const tagCat = blog.category || (Array.isArray(blog.tags) ? blog.tags[0] : 'Engineering Guide');
+    const takeaways = Array.isArray(blog.keyTakeaways)
+      ? blog.keyTakeaways.join('\n')
+      : blog.aiSummary?.keyTakeaway || '';
+
+    // If blog has sections, reconstruct markdown content
+    let contentBody = '';
+    if (typeof blog.content === 'string' && blog.content.length > 0) {
+      contentBody = blog.content;
+    } else if (Array.isArray(blog.sections)) {
+      contentBody = blog.sections
+        .map((s) => `## ${s.heading || ''}\n\n${(s.paragraphs || []).join('\n\n')}`)
+        .join('\n\n');
+    }
+
     setForm({
       title: blog.title || '',
-      category: blog.category || 'Engineering Guide',
-      readTime: blog.readTime || '5 min read',
+      category: tagCat,
+      readTime: readTimeStr,
       author: blog.author || 'KCR Engineering Team',
-      img: blog.img || '',
+      img: blogImg,
       excerpt: blog.excerpt || '',
-      metaDesc: blog.metaDesc || '',
-      content: typeof blog.content === 'string' ? blog.content : '',
+      metaDesc: blog.metaDesc || blog.metaDescription || '',
+      content: contentBody,
       status: blog.status || 'Published',
-      keyTakeaways: Array.isArray(blog.keyTakeaways) ? blog.keyTakeaways.join('\n') : '',
+      keyTakeaways: takeaways,
       faqQ1: blog.faqs?.[0]?.q || '',
       faqA1: blog.faqs?.[0]?.a || '',
       faqQ2: blog.faqs?.[1]?.q || '',
@@ -66,15 +85,37 @@ export default function AdminBlogs() {
     setModalOpen(true);
   };
 
-  const handleImageFile = (e) => {
+  // Image Upload File Handler
+  const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        setForm((prev) => ({ ...prev, img: uploadEvent.target.result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const optimized = await optimizeImageFile(file);
+        setForm((prev) => ({ ...prev, img: optimized }));
+      } catch (err) {
+        console.error('Blog image upload failed:', err);
+      }
     }
+  };
+
+  // Drag & drop photo upload
+  const handleDropPhoto = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      try {
+        const optimized = await optimizeImageFile(file);
+        setForm((prev) => ({ ...prev, img: optimized }));
+      } catch (err) {
+        console.error('Blog image drop failed:', err);
+      }
+    }
+  };
+
+  // Remove / Clear Photo
+  const handleClearPhoto = () => {
+    setForm((prev) => ({ ...prev, img: '' }));
   };
 
   const handleSave = (e) => {
@@ -83,17 +124,43 @@ export default function AdminBlogs() {
     if (form.faqQ1 && form.faqA1) faqs.push({ q: form.faqQ1, a: form.faqA1 });
     if (form.faqQ2 && form.faqA2) faqs.push({ q: form.faqQ2, a: form.faqA2 });
 
+    const cleanTakeaways = form.keyTakeaways
+      ? form.keyTakeaways.split('\n').map((s) => s.trim()).filter((s) => s.length > 0)
+      : [];
+
+    const numReadingTime = parseInt(form.readTime, 10) || 5;
+
+    // Parse sections from content
+    const rawParagraphs = form.content.split('\n\n').map((p) => p.trim()).filter(Boolean);
+    const sections = [
+      {
+        heading: 'Technical Analysis & Guide',
+        paragraphs: rawParagraphs.length > 0 ? rawParagraphs : [form.excerpt],
+      },
+    ];
+
     const payload = {
       title: form.title,
       category: form.category,
+      tags: [form.category],
       readTime: form.readTime,
+      readingTime: numReadingTime,
       author: form.author,
-      img: form.img || '/images/blog/cold-room-sizing.jpg',
+      img: form.img,
+      image: form.img,
+      imageAlt: form.title,
       excerpt: form.excerpt,
       metaDesc: form.metaDesc,
+      metaDescription: form.metaDesc,
+      metaTitle: `${form.title} | Kathmandu Chilling Engineering Blog`,
       content: form.content,
+      sections,
       status: form.status,
-      keyTakeaways: form.keyTakeaways.split('\n').filter((s) => s.trim().length > 0),
+      keyTakeaways: cleanTakeaways,
+      aiSummary: {
+        keyTakeaway: cleanTakeaways[0] || form.excerpt,
+        quickFacts: [],
+      },
       faqs,
     };
 
@@ -102,12 +169,17 @@ export default function AdminBlogs() {
     } else {
       addBlog(payload);
     }
+
     setModalOpen(false);
+    setSaveAlert(true);
+    setTimeout(() => setSaveAlert(false), 3000);
   };
 
   const handleDelete = (id, title) => {
     if (window.confirm(`Delete article "${title}"?`)) {
       deleteBlog(id);
+      setSaveAlert(true);
+      setTimeout(() => setSaveAlert(false), 3000);
     }
   };
 
@@ -118,12 +190,18 @@ export default function AdminBlogs() {
         <div>
           <div className="admin-breadcrumbs mono">CONTENT · SEO &amp; ARTICLES</div>
           <h1>Blog &amp; Technical Articles Publisher</h1>
-          <p>Publish AI-optimized guides, Schema.org FAQs, and cold-chain engineering insights.</p>
+          <p>Publish AI-optimized guides, cover photographs, Schema.org FAQs, and cold-chain engineering insights.</p>
         </div>
         <button type="button" className="btn-admin-primary" onClick={openAddModal}>
           <span>+ Create New Article</span>
         </button>
       </div>
+
+      {saveAlert && (
+        <div className="admin-alert-success" style={{ marginBottom: '20px' }}>
+          ✓ Article saved successfully! Changes published in real time.
+        </div>
+      )}
 
       {/* Blogs Table */}
       <div className="admin-panel-card">
@@ -131,7 +209,7 @@ export default function AdminBlogs() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Article</th>
+                <th>Article &amp; Cover</th>
                 <th>Category</th>
                 <th>Status</th>
                 <th>Author</th>
@@ -140,13 +218,17 @@ export default function AdminBlogs() {
               </tr>
             </thead>
             <tbody>
-              {data.blogs.map((b) => (
-                <tr key={b.id}>
+              {(data?.blogs || []).map((b) => (
+                <tr key={b.id || b.slug}>
                   <td>
                     <div className="blog-row-cell">
-                      {b.img && (
+                      {b.image || b.img ? (
                         <div className="blog-mini-thumb">
-                          <img src={b.img} alt={b.title} />
+                          <img src={b.image || b.img} alt={b.title} />
+                        </div>
+                      ) : (
+                        <div className="blog-mini-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a192f', color: '#64748b' }}>
+                          📖
                         </div>
                       )}
                       <div>
@@ -156,7 +238,7 @@ export default function AdminBlogs() {
                     </div>
                   </td>
                   <td>
-                    <span className="cat-badge mono">{b.category}</span>
+                    <span className="cat-badge mono">{b.category || (Array.isArray(b.tags) ? b.tags[0] : 'Guide')}</span>
                   </td>
                   <td>
                     <span className={`status-pill ${b.status === 'Published' ? 'green' : 'gray'} mono`}>
@@ -180,7 +262,7 @@ export default function AdminBlogs() {
                       <button
                         type="button"
                         className="btn-table-delete mono"
-                        onClick={() => handleDelete(b.id, b.title)}
+                        onClick={() => handleDelete(b.id || b.slug, b.title)}
                       >
                         🗑️
                       </button>
@@ -257,25 +339,89 @@ export default function AdminBlogs() {
                   </select>
                 </div>
 
-                {/* Cover Image */}
+                {/* ============================================================ */}
+                {/* ARTICLE COVER PHOTOGRAPH CONTROLS */}
+                {/* ============================================================ */}
                 <div className="form-field span-2">
-                  <label>Cover Photograph (Upload File or Enter URL)</label>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Cover Photograph</span>
+                    {form.img && (
+                      <button
+                        type="button"
+                        onClick={handleClearPhoto}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '4px',
+                          padding: '2px 8px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕ Remove Cover Photo
+                      </button>
+                    )}
+                  </label>
+
+                  {/* Drag & Drop Box */}
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleDropPhoto}
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed var(--admin-cyan)',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: 'rgba(53, 214, 255, 0.04)',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageFile}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+                    <span style={{ fontSize: '20px', display: 'block', marginBottom: '4px' }}>📸</span>
+                    <strong style={{ color: '#fff', fontSize: '13px' }}>
+                      Click to Browse File or Drag &amp; Drop Article Cover
+                    </strong>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                      Supports JPG, PNG, WEBP
+                    </div>
+                  </div>
+
                   <div className="image-input-split">
                     <input
                       type="text"
                       value={form.img}
                       onChange={(e) => setForm({ ...form, img: e.target.value })}
-                      placeholder="/images/blog/cold-room-sizing.jpg"
-                    />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFile}
+                      placeholder="Or enter image URL: /images/blog/... or https://..."
                     />
                   </div>
-                  {form.img && (
-                    <div className="image-preview-box">
-                      <img src={form.img} alt="Preview" />
+
+                  {form.img ? (
+                    <div className="image-preview-box" style={{ marginTop: '8px' }}>
+                      <img src={form.img} alt="Article Preview" />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <span className="preview-label mono">✓ Active Cover Photo</span>
+                        <button
+                          type="button"
+                          onClick={handleClearPhoto}
+                          className="btn-table-delete"
+                          style={{ padding: '3px 8px', fontSize: '11px' }}
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginTop: '8px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+                      ℹ️ No cover photo assigned. Article will render standard guide icon.
                     </div>
                   )}
                 </div>
@@ -373,7 +519,7 @@ export default function AdminBlogs() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-modal-save">
-                  {editingId ? 'Update Article' : 'Publish Article'}
+                  {editingId ? '✓ Update Article' : '+ Publish Article'}
                 </button>
               </div>
             </form>

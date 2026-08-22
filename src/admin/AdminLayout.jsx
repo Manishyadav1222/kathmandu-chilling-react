@@ -31,6 +31,7 @@ export default function AdminLayout() {
     { to: '/admin/products', label: 'Products & Equipment', icon: '🧊', count: totalProducts },
     { to: '/admin/projects', label: 'Projects & Case Studies', icon: '🏭', count: data.projects.length },
     { to: '/admin/story', label: 'Story, Mission & Team', icon: '🏛️', count: (data.team || []).length },
+    { to: '/admin/videos', label: 'Video Reels & Shorts', icon: '📹', count: (data.videos || []).length },
     { to: '/admin/blogs', label: 'Blog & SEO Articles', icon: '📖', count: data.blogs.length },
     { to: '/admin/promotions', label: 'Campaign Posters', icon: '🎪' },
     { to: '/admin/settings', label: 'Settings & Backups', icon: '⚙️' },

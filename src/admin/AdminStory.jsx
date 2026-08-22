@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useAdminData } from '../context/AdminDataContext.jsx';
+import { useAdminData, optimizeImageFile } from '../context/AdminDataContext.jsx';
 
 // Preset Avatars for Quick Setup
 const PRESET_AVATARS = [
@@ -77,42 +77,43 @@ export default function AdminStory() {
     desc: '',
   });
 
-  // File Upload to Base64 Handler
-  const handleFileUpload = (e) => {
+  // File Upload with Optimization
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (recommend < 4MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Photo is larger than 5MB. Please choose a smaller photo for optimal performance.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
+    try {
+      const optimized = await optimizeImageFile(file);
       setMemberForm((prev) => ({
         ...prev,
-        image: uploadEvent.target.result,
+        image: optimized,
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('File optimization failed:', err);
+    }
   };
 
   // Drag and drop photo upload
-  const handleDropPhoto = (e) => {
+  const handleDropPhoto = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
+      try {
+        const optimized = await optimizeImageFile(file);
         setMemberForm((prev) => ({
           ...prev,
-          image: uploadEvent.target.result,
+          image: optimized,
         }));
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Drop optimization failed:', err);
+      }
     }
+  };
+
+  // Clear / Remove Team Photo
+  const handleClearMemberPhoto = () => {
+    setMemberForm((prev) => ({ ...prev, image: '' }));
   };
 
   // Save Main Story Changes
@@ -156,14 +157,14 @@ export default function AdminStory() {
 
   const handleSaveMember = (e) => {
     e.preventDefault();
-    if (!memberForm.image) {
-      alert('Please upload a profile photo or select a preset avatar.');
-      return;
-    }
+    const payload = {
+      ...memberForm,
+      image: memberForm.image || PRESET_AVATARS[0].url,
+    };
     if (editingMemberId) {
-      updateTeamMember(editingMemberId, memberForm);
+      updateTeamMember(editingMemberId, payload);
     } else {
-      addTeamMember(memberForm);
+      addTeamMember(payload);
     }
     setTeamModalOpen(false);
     setSaveAlert(true);
@@ -714,7 +715,26 @@ export default function AdminStory() {
                 {/* LEFT COLUMN: FORM INPUTS & PHOTO UPLOADER */}
                 <div>
                   <div className="form-group">
-                    <label>Photo Source Mode</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ margin: 0 }}>Photo Source Mode</label>
+                      {memberForm.image && (
+                        <button
+                          type="button"
+                          onClick={handleClearMemberPhoto}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕ Remove Photo
+                        </button>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <button
                         type="button"

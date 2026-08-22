@@ -1,12 +1,17 @@
 import { CLIENTS } from '../data/content';
 import { useLang } from '../hooks/useLang.jsx';
 import { useReveal } from '../hooks/useReveal';
+import { useAdminData } from '../context/AdminDataContext.jsx';
+import SmartImage from './SmartImage.jsx';
 
 export default function Clients() {
   const { t } = useLang();
   const headReveal = useReveal();
   const stripReveal = useReveal();
-  const doubled = [...CLIENTS, ...CLIENTS];
+  const { data } = useAdminData();
+
+  const clientList = data?.clients && data.clients.length > 0 ? data.clients : CLIENTS;
+  const doubled = [...clientList, ...clientList, ...clientList];
 
   return (
     <section id="clients">
@@ -19,7 +24,11 @@ export default function Clients() {
           <div className="client-track">
             {doubled.map((c, i) => (
               <div className="client-cell" key={`${c.name}-${i}`}>
-                <img src={c.img} alt={c.name} />
+                {c.img ? (
+                  <SmartImage src={c.img} alt={c.name} icon="🏢" ratio="16/9" className="client-logo-img" />
+                ) : (
+                  <div className="client-logo-fallback mono">{c.name.slice(0, 3).toUpperCase()}</div>
+                )}
                 <span className="client-name">{c.name}</span>
               </div>
             ))}

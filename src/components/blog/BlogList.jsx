@@ -3,6 +3,7 @@ import { BLOG_POSTS, BLOG_META, formatDate } from '../../data/blog';
 import { useSeo } from '../../hooks/useSeo';
 import { useReveal } from '../../hooks/useReveal';
 import { useAdminData } from '../../context/AdminDataContext.jsx';
+import SmartImage from '../SmartImage.jsx';
 
 export default function BlogList() {
   useSeo({
@@ -12,8 +13,8 @@ export default function BlogList() {
   });
   const headReveal = useReveal();
   const { data } = useAdminData();
-  const rawPosts = data?.blogs || BLOG_POSTS;
-  const posts = [...rawPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const rawPosts = data?.blogs && data.blogs.length > 0 ? data.blogs : BLOG_POSTS;
+  const posts = [...rawPosts].sort((a, b) => new Date(b.date || '2025-01-01') - new Date(a.date || '2025-01-01'));
 
   return (
     <section className="blog-page">
@@ -29,21 +30,28 @@ export default function BlogList() {
 
         <div className="blog-grid">
           {posts.map((post) => (
-            <article className="blog-card" key={post.slug}>
-              <Link to={`/blog/${post.slug}`} className="blog-card-link">
+            <article className="blog-card" key={post.slug || post.id}>
+              <Link to={`/blog/${post.slug || post.id}`} className="blog-card-link">
                 <div className="blog-card-media">
-                  <img src={post.image} alt={post.imageAlt} loading="lazy" />
-                  {post.tags[0] && <span className="blog-tag">{post.tags[0]}</span>}
+                  <SmartImage
+                    src={post.image || post.img}
+                    alt={post.imageAlt || post.title}
+                    icon="📖"
+                    ratio="16/10"
+                  />
+                  {(post.tags?.[0] || post.category) && (
+                    <span className="blog-tag">{post.tags?.[0] || post.category}</span>
+                  )}
                 </div>
                 <div className="blog-card-body">
                   <div className="blog-meta mono">
                     <span>{formatDate(post.date)}</span>
                     <span>·</span>
-                    <span>{post.readingTime} min read</span>
+                    <span>{post.readingTime || post.readTime || 5} min read</span>
                   </div>
                   <h2>{post.title}</h2>
                   <p>{post.excerpt}</p>
-                  <span className="blog-read-more">Read the article</span>
+                  <span className="blog-read-more">Read the article →</span>
                 </div>
               </Link>
             </article>

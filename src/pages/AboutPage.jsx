@@ -5,6 +5,7 @@ import { useAdminData } from '../context/AdminDataContext.jsx';
 import { useSeo } from '../hooks/useSeo';
 import { buildWhatsAppLink } from '../data/content';
 import { WhatsAppIcon } from '../components/Hero.jsx';
+import SmartImage from '../components/SmartImage.jsx';
 
 export default function AboutPage() {
   const { data } = useAdminData();
@@ -214,7 +215,7 @@ export default function AboutPage() {
             {filteredTeam.map((member) => (
               <div key={member.id} className="team-card">
                 <div className="team-photo-wrap">
-                  <img src={member.image} alt={member.name} loading="lazy" />
+                  <SmartImage src={member.image} alt={member.name} icon="👤" ratio="1/1" />
                   <div className="team-dept-badge mono">{member.department}</div>
                 </div>
                 <div className="team-info">

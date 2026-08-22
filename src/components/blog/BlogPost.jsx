@@ -6,14 +6,19 @@ import { useAdminData } from '../../context/AdminDataContext.jsx';
 import { useSeo } from '../../hooks/useSeo';
 import { useReveal } from '../../hooks/useReveal';
 import { WhatsAppIcon } from '../Hero.jsx';
+import SmartImage from '../SmartImage.jsx';
 import NotFound from './NotFound.jsx';
 
 export default function BlogPost() {
   const { slug } = useParams();
   const { data } = useAdminData();
   const allBlogs = data?.blogs || [];
-  const post = allBlogs.find((b) => b.slug === slug) || getPostBySlug(slug);
+  const post = allBlogs.find((b) => b.slug === slug || b.id === slug) || getPostBySlug(slug);
   const reveal = useReveal();
+
+  const coverPhoto = post?.image || post?.img || '';
+  const postTags = Array.isArray(post?.tags) && post.tags.length > 0 ? post.tags : [post?.category || 'Engineering Guide'];
+  const readingTimeVal = post?.readingTime || (typeof post?.readTime === 'string' ? parseInt(post.readTime, 10) : post?.readTime) || 5;
 
   const jsonLd = useMemo(() => {
     if (!post) return null;
@@ -34,7 +39,7 @@ export default function BlogPost() {
       mainEntityOfPage: { '@type': 'WebPage', '@id': `${BLOG_META.baseUrl}/blog/${post.slug}` },
       headline: post.title,
       description: post.excerpt,
-      image: post.image,
+      image: coverPhoto,
       datePublished: post.date,
       dateModified: post.date,
       author: {
@@ -51,7 +56,7 @@ export default function BlogPost() {
         name: 'Kathmandu Chilling & Refrigerator Udhyog Pvt. Ltd.',
         logo: { '@type': 'ImageObject', url: CONTACT.logo },
       },
-      keywords: post.tags.join(', '),
+      keywords: postTags.join(', '),
       articleBody: post.aiSummary?.keyTakeaway || post.excerpt,
     };
 
@@ -71,11 +76,11 @@ export default function BlogPost() {
       : null;
 
     return [breadcrumbs, articleSchema, faqSchema].filter(Boolean);
-  }, [post]);
+  }, [post, coverPhoto, postTags]);
 
   useSeo({
     title: post?.metaTitle || post?.title,
-    description: post?.metaDescription || post?.excerpt,
+    description: post?.metaDescription || post?.metaDesc || post?.excerpt,
     canonical: post ? `${BLOG_META.baseUrl}/blog/${post.slug}` : undefined,
     jsonLd,
   });
@@ -99,13 +104,13 @@ export default function BlogPost() {
             <div className="blog-meta mono">
               <span>{formatDate(post.date)}</span>
               <span>·</span>
-              <span>{post.readingTime} min read</span>
+              <span>{readingTimeVal} min read</span>
               <span>·</span>
-              <span className="blog-author-tag">By {post.author}</span>
+              <span className="blog-author-tag">By {post.author || 'KCR Team'}</span>
             </div>
             <h1>{post.title}</h1>
             <div className="blog-tags">
-              {post.tags.map((tag) => (
+              {postTags.map((tag) => (
                 <span key={tag} className="blog-tag static">
                   {tag}
                 </span>
@@ -114,7 +119,14 @@ export default function BlogPost() {
           </div>
 
           <div className="blog-cover-wrapper">
-            <img src={post.image} alt={post.imageAlt} className="blog-cover" loading="eager" />
+            <SmartImage
+              src={coverPhoto}
+              alt={post.imageAlt || post.title}
+              icon="📖"
+              ratio="16/9"
+              eager={true}
+              className="blog-cover"
+            />
           </div>
 
           {/* AI Search Engine Executive Summary Box (GEO Optimized) */}
@@ -124,7 +136,7 @@ export default function BlogPost() {
                 <span className="ai-icon">✨</span>
                 <strong>AI Executive Summary &amp; Key Takeaway</strong>
               </div>
-              <p className="ai-takeaway">{post.aiSummary.keyTakeaway}</p>
+              <p className="ai-takeaway">{post.aiSummary.keyTakeaway || post.excerpt}</p>
               {post.aiSummary.quickFacts?.length > 0 && (
                 <div className="ai-facts-grid">
                   {post.aiSummary.quickFacts.map((fact, idx) => (
@@ -139,20 +151,36 @@ export default function BlogPost() {
           )}
 
           <div className="blog-article reveal" ref={reveal}>
-            {/* Main Sections */}
-            {post.sections.map((section, i) => (
-              <div className="blog-section" key={i}>
-                {section.heading && <h2>{section.heading}</h2>}
-                {section.paragraphs?.map((p, j) => <p key={j}>{p}</p>)}
-                {section.list?.length > 0 && (
-                  <ul>
-                    {section.list.map((item, j) => (
-                      <li key={j}>{item}</li>
-                    ))}
-                  </ul>
-                )}
+            {/* Sections / Article Body */}
+            {post.sections && Array.isArray(post.sections) && post.sections.length > 0 ? (
+              post.sections.map((section, i) => (
+                <div className="blog-section" key={i}>
+                  {section.heading && <h2>{section.heading}</h2>}
+                  {section.paragraphs?.map((p, j) => <p key={j}>{p}</p>)}
+                  {section.list?.length > 0 && (
+                    <ul>
+                      {section.list.map((item, j) => (
+                        <li key={j}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))
+            ) : typeof post.content === 'string' ? (
+              <div className="blog-content-body">
+                {post.content.split('\n\n').map((paragraph, pIdx) => {
+                  if (paragraph.startsWith('## ')) {
+                    return <h2 key={pIdx}>{paragraph.replace('## ', '')}</h2>;
+                  }
+                  if (paragraph.startsWith('### ')) {
+                    return <h3 key={pIdx}>{paragraph.replace('### ', '')}</h3>;
+                  }
+                  return <p key={pIdx}>{paragraph}</p>;
+                })}
               </div>
-            ))}
+            ) : (
+              <p>{post.excerpt}</p>
+            )}
 
             {/* Comparison Table if Present */}
             {post.comparisonTable && (
@@ -207,7 +235,7 @@ export default function BlogPost() {
             <div className="author-card">
               <div className="author-avatar mono">KT</div>
               <div className="author-info">
-                <strong>{post.author}</strong>
+                <strong>{post.author || 'KCR Engineering Team'}</strong>
                 <span>{post.authorRole || 'Refrigeration Engineering Specialist'}</span>
                 <p>
                   Industrial cooling design specialist with extensive field experience across Nepal’s
@@ -249,14 +277,14 @@ export default function BlogPost() {
                   <article className="blog-card" key={p.slug}>
                     <Link to={`/blog/${p.slug}`} className="blog-card-link">
                       <div className="blog-card-media">
-                        <img src={p.image} alt={p.imageAlt} loading="lazy" />
-                        {p.tags[0] && <span className="blog-tag">{p.tags[0]}</span>}
+                        <SmartImage src={p.image || p.img} alt={p.imageAlt || p.title} icon="📖" ratio="16/10" />
+                        {(p.tags?.[0] || p.category) && <span className="blog-tag">{p.tags?.[0] || p.category}</span>}
                       </div>
                       <div className="blog-card-body">
                         <div className="blog-meta mono">
                           <span>{formatDate(p.date)}</span>
                           <span>·</span>
-                          <span>{p.readingTime} min read</span>
+                          <span>{p.readingTime || p.readTime || 5} min read</span>
                         </div>
                         <h3>{p.title}</h3>
                         <span className="blog-read-more">Read the guide →</span>
